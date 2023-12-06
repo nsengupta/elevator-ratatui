@@ -72,34 +72,26 @@ pub fn render_modified(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
     f.render_widget(canvas, chunks[1]);
 }
 
-/*
-fn ui<B: Backend>(f: &mut Frame<B>, app: &App) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(f.size());
-    let canvas = Canvas::default()
-        .block(Block::default().borders(Borders::ALL).title("World"))
-        .marker(app.marker)
-        .paint(|ctx| {
-            ctx.draw(&Map {
-                color: Color::White,
-                resolution: MapResolution::High,
-            });
-            ctx.print(app.x, -app.y, "You are here".yellow());
-        })
-        .x_bounds([-180.0, 180.0])
-        .y_bounds([-90.0, 90.0]);
-    f.render_widget(canvas, chunks[0]);
-    let canvas = Canvas::default()
-        .block(Block::default().borders(Borders::ALL).title("Pong"))
-        .marker(app.marker)
-        .paint(|ctx| {
-            ctx.draw(&app.ball);
-        })
-        .x_bounds([5.0, 110.0])
-        .y_bounds([5.0, 110.0]);
-    f.render_widget(canvas, chunks[1]);
-}   
+pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
+    let chunks = layout.display_windows.clone();
 
-*/
+    let elevator_transitions_window = create_state_description_paragraph();
+
+    f.render_widget(elevator_transitions_window, chunks[0]);
+
+    let canvas = Canvas::default()
+        .block(Block::default().borders(Borders::ALL).title("Carriage"))
+        .marker(app.inner_display_setup.marker)
+        .paint(|ctx| {
+            ctx.draw(&app.inner_display_setup.carriage_shape);
+        })
+        //.x_bounds([150.0, 190.0])
+        //.y_bounds([0.0, 43.0])
+        .x_bounds([1.0, chunks[1].width as f64  - 1.0])
+        .y_bounds([1.0, chunks[1].height as f64 - 1.0])
+
+        ;
+    f.render_widget(canvas, chunks[1]);
+}
+
+
