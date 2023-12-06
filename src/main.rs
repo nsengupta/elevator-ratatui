@@ -68,10 +68,16 @@ fn main() -> Result<(), Box<dyn Error>> {
             Event::Mouse(_) => {}
             Event::Resize(_, _) => {}
         }
+
+        if app.should_quit_app() {
+            tui.exit()?;
+            break;
+        }
+            
     }
 
 
-    sleep(Duration::from_secs(10));
+    // sleep(Duration::from_secs(10));
 
     Ok(())
 }
