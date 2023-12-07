@@ -1,17 +1,17 @@
 use std::error;
-use crate::{machinery::CarriageActor, app_layout::CarriageParameters};
+use crate::{machinery::CarriageActor, elevator_infra::ElevatorInfra};
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 
 pub struct App {
+    pub inner_display_setup: ElevatorInfra,
     inner_machinery: Option<CarriageActor>,
-    pub inner_display_setup: CarriageParameters,
     to_quit: bool
 }
 
 impl App {
 
-    pub fn new (carriage_movement_area: CarriageParameters) -> Self { 
+    pub fn new (carriage_movement_area: ElevatorInfra) -> Self { 
         Self {
             inner_display_setup: carriage_movement_area,
             inner_machinery: None,
