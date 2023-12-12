@@ -1,5 +1,5 @@
 use std::error;
-use crate::{machinery::CarriageActor, elevator_infra::ElevatorInfra};
+use crate::{machinery::CarriageActor, elevator_infra::{ElevatorInfra, FloorCoordinates}};
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -22,6 +22,12 @@ impl App {
     pub fn quit(&mut self) -> () {
         self.to_quit = true;
         () 
+    }
+
+    pub fn floor_roof_to_reach(&self,floor_id: i16) -> Option<&FloorCoordinates> {
+
+            self.inner_display_setup.floor_coords.get(floor_id as usize)
+
     }
 
     pub fn increment_counter(&mut self) -> () { () }

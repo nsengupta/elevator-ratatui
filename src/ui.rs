@@ -1,5 +1,5 @@
 
-use ratatui::{widgets::{Paragraph, Block, Borders, BorderType, Wrap, canvas::{Canvas, Rectangle}}, style::{Style, Color, Stylize}, layout::Alignment, text::{Text, Span}, Frame, symbols::Marker};
+use ratatui::{widgets::{Paragraph, Block, Borders, BorderType, Wrap, canvas::{Canvas, Rectangle}}, style::{Style, Color, Stylize}, layout::Alignment, text::{Text, Span, Line as TextLine}, Frame, symbols::Marker};
 
 use crate::{app::App, tui_layout::TuiLayout};
 
@@ -73,7 +73,7 @@ pub fn render_modified(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
         .paint(|ctx| {
             // ctx.draw(&app.inner_display_setup.carriage_shape);
 
-            ctx.draw(&app.inner_display_setup.floor_wall);
+            ctx.draw(&app.inner_display_setup.building_wall);
         })
         //.x_bounds([150.0, 190.0])
         //.y_bounds([0.0, 43.0])
@@ -91,10 +91,10 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
 
     let elevator_transitions_window = create_state_description_paragraph(
         "Line coordinates",
-        app.inner_display_setup.floor_wall.x1,
-        app.inner_display_setup.floor_wall.y1,
-        app.inner_display_setup.floor_wall.x2,
-        app.inner_display_setup.floor_wall.y2
+        app.inner_display_setup.building_wall.x1,
+        app.inner_display_setup.building_wall.y1,
+        app.inner_display_setup.building_wall.x2,
+        app.inner_display_setup.building_wall.y2
     );
 
     f.render_widget(elevator_transitions_window, chunks[0]);
@@ -102,7 +102,7 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
     let mut text_lines: Vec<TextLine> = Vec::new();
 
 
-    for floor in &app.inner_display_setup.floor_markers {
+    for floor in &app.inner_display_setup.level_markers {
 
         let next_line: TextLine = 
             format!("left {}, top {}, width {}, height {}",
@@ -147,8 +147,8 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
                 color: Color::LightBlue
             });
 
-            ctx.draw(&app.inner_display_setup.floor_wall);
-            for floor in &app.inner_display_setup.floor_markers {
+            ctx.draw(&app.inner_display_setup.building_wall);
+            for floor in &app.inner_display_setup.level_markers {
                 ctx.draw(floor);
             }
 

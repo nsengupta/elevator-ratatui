@@ -1,7 +1,21 @@
 use std::rc::Rc;
 use ratatui::{widgets::canvas::{Rectangle, Line}, prelude::{Color, Marker, Rect}};
 
-const MX_FLOORS: u32 = 8;
+const MX_FLOORS: u32 = 7;
+
+#[derive(Debug)]
+pub struct XYPoint {
+    x: f64,
+    y: f64,
+}
+
+#[derive(Debug)]
+pub struct FloorCoordinates {
+    ground_left: XYPoint,
+    ground_right: XYPoint,
+    roof_left: XYPoint,
+    roof_right: XYPoint
+}
 
 #[derive(Debug)]
 pub struct ElevatorInfra {
@@ -11,9 +25,10 @@ pub struct ElevatorInfra {
     tick_count: i32,
     dir_x: i16,
     dir_y: i16,
-    pub floor_wall: Line,
-    pub floor_markers: Vec<Line>, // Assumption: 8 floors
-    pub each_floor_height: u32
+    pub building_wall: Line,
+    pub level_markers: Vec<Line>, // Assumption: 8 floors, 0 to 7
+    pub each_level_height: u32,
+    pub floor_coords: Vec<FloorCoordinates>
 
 }
 
@@ -41,19 +56,19 @@ impl  ElevatorInfra {
                         Color::Blue
                     );
 
-        let each_floor_height = 
+        let each_level_height = 
             f64::ceil(
                 f64::abs(wall.y2 - wall.y1) / MX_FLOORS as f64
             ) 
             as u32;
 
-        let mut floor_posn: Vec<(f64,f64)> = Vec::new();     
+        let mut level_posn: Vec<(f64,f64)> = Vec::new();     
         for index in 0..MX_FLOORS {  
-            floor_posn.push((wall.x1, wall.y1 + (each_floor_height * index) as f64));
+            level_posn.push((wall.x1, wall.y1 + (each_level_height * index) as f64));
         }   
         
-        let floor_markers = 
-                floor_posn.iter()
+        let level_markers = 
+                level_posn.iter()
                 .map(|next_posn|{
                         Line::new(
                             3.0,  // Leave a space at the left
@@ -65,12 +80,26 @@ impl  ElevatorInfra {
                     })
                 .collect::<Vec<Line>>()
                 ;
+        let floor_coords = 
+                level_markers.iter()
+                    .as_slice()
+                    .windows(2)
+                    .map(|next_pair| {
+                      FloorCoordinates {
+                        ground_left: XYPoint{ x: next_pair[0].x1, y: next_pair[0].y1 },
+                        ground_right: XYPoint{ x: next_pair[0].x2,y: next_pair[0].y2 },
+                        roof_left: XYPoint{ x: next_pair[1].x1, y: next_pair[1].y1 },
+                        roof_right: XYPoint{ x: next_pair[1].x2, y: next_pair[1].y2 },
+                      }
+                    })
+                    .collect::<Vec<FloorCoordinates>>()
+                    ;
 
         let carriage_shape = Rectangle {
             x: wall.x1 + 1.0,
             y: wall.y1,
             width: 10.0,
-            height: each_floor_height as f64,
+            height: each_level_height as f64,
             color: Color::Yellow,
         };
 
@@ -81,9 +110,10 @@ impl  ElevatorInfra {
             tick_count: 0,
             dir_x: 0,
             dir_y: 0,
-            floor_wall: wall,
-            floor_markers: floor_markers,
-            each_floor_height: each_floor_height
+            building_wall: wall,
+            level_markers,
+            each_level_height,
+            floor_coords
 
         }
     }

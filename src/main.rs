@@ -16,6 +16,7 @@ use app::App;
 use elevator_infra::ElevatorInfra;
 use event::EventHandler;
 use handler::handle_key_events;
+use rand::Rng;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use tui::Tui;
@@ -59,7 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
      let carriage_parameters = ElevatorInfra::new(
             tui_layout.get_window_corners(1));
 
-    println!("each floor height {}", carriage_parameters.each_floor_height);
+    println!("each floor height {}", carriage_parameters.each_level_height);
 
 
     let mut user_input = String::new();
@@ -71,7 +72,6 @@ fn main() -> Result<(), Box<dyn Error>> {
      
      // Create an application.
      let mut app = App::new(carriage_parameters);
-
 
      tui.init()?;
 
@@ -96,61 +96,5 @@ fn main() -> Result<(), Box<dyn Error>> {
             
     }
 
-
-    // sleep(Duration::from_secs(10));
-
     Ok(())
 }
-
-
-
-/* 
-fn ui_carriage<B: Backend, F: Fn(&mut Context)>(f: &mut Frame<B>, app_state: &mut AppLayout<F>, chunk_index: i16) {
-    let chunks = app_state.display_windows.clone();
-
-    let canvas = app_state.carriage_canvas
-        .paint(|ctx| {
-            ctx.draw(&app_state.carriage);
-        })
-
-        ;
-    f.render_widget(canvas, chunks[chunk_index as usize]);
-}
-
-fn ui_elevator_control<B: Backend>(f: &mut Frame<B>, app: &AppLayout) {
-    let chunks = app.display_windows.clone();
-
-    let elevator_transitions_window =
-        Paragraph::new(app.tell_me_more());
-
-    f.render_widget(elevator_transitions_window, chunks[0]);
-
-    let canvas = Canvas::default()
-        .block(Block::default().borders(Borders::ALL).title("Carriage"))
-        .marker(app.marker)
-        .paint(|ctx| {
-            ctx.draw(&app.carriage);
-        })
-        //.x_bounds([150.0, 190.0])
-        //.y_bounds([0.0, 43.0])
-        .x_bounds([1.0, 50.0])
-        .y_bounds([1.0, 50.0])
-
-        ;
-    f.render_widget(canvas, chunks[1]);
-}
- */
-
-
-
-
-/* fn create_chunks<B: Backend>(f: &mut Frame<B>) -> Rc<[Rect]> {
-
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(f.size());
-
-    chunks
-
-} */
