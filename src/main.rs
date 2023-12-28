@@ -1,5 +1,5 @@
 mod tui;
-mod event;
+mod async_event;
 mod handler;
 mod app;
 mod elevator_infra;
@@ -10,23 +10,20 @@ mod ui;
 
 use std::error::Error;
 use std::io;
-use std::thread::sleep;
-use std::time::Duration;
+
 use app::App;
 use elevator_infra::ElevatorInfra;
-use event::EventHandler;
-use handler::handle_key_events;
-use rand::Rng;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use tui::Tui;
-use event::Event;
 use tui_layout::TuiLayout;
 
+use crate::async_event::AppOwnEvent;
 
 
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     // let mut terminal = setup_terminal()?;
     // let r = terminal.size()?;
     // println!("Terminal top: {}, left {}, bottom {}, right {}", r.top(),r.left(),r.bottom(),r.right());
@@ -41,7 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(io::stderr());
     let terminal = Terminal::new(backend)?;
-    let events = EventHandler::new(250);
+
     let tui_layout = TuiLayout::new(&terminal)?;
 
     let screen_0 = tui_layout.get_window_corners(0);
@@ -68,25 +65,36 @@ fn main() -> Result<(), Box<dyn Error>> {
     stdin.read_line(&mut user_input);      
 
 
-     let mut tui = Tui::new(terminal, events, tui_layout);
+     let mut tui = Tui::new(terminal, tui_layout);
      
      // Create an application.
-     let mut app = App::new(carriage_parameters);
+     let mut app = App::new(carriage_parameters, 1.0, 30.0);
 
-     tui.init()?;
+    tui.init()?;
+
+    tui.start();
 
     // Start the main loop.
     loop {
         // Render the user interface.
-        tui.draw(&mut app)?;
+        // tui.draw(&mut app)?;
+
         // Handle events.
-        match tui.events.next()? {
-            Event::Tick => {
-                app.inner_display_setup.on_tick((0,1))
+        match tui.next().await {
+            Some(AppOwnEvent::Tick) => {
+                app.inner_display_setup.on_tick((0,1));
             },
-            Event::Key(key_event) => handle_key_events(key_event, &mut app)?,
-            Event::Mouse(_) => {}
-            Event::Resize(_, _) => {}
+            Some(AppOwnEvent::Render) => {
+                tui.draw(&mut app)?;
+            },
+            Some(AppOwnEvent::Key(key_event)) => {
+                app.update_app(AppOwnEvent::Key(key_event))
+                //println!("KeyEvent received.");
+            },
+            Some(AppOwnEvent::Mouse(_)) => {},
+            None => {},
+            _ => {}
+            
         }
 
         if app.should_quit_app() {

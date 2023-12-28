@@ -8,9 +8,13 @@ edition = "2021"
 [dependencies]
 # tui = "0.16"
 
-crossterm = "0.27"
-ratatui = "0.24.0"
+ratatui = "0.25.0"
 clearscreen = "2.0.1"
 figlet-rs = "0.1.5"
 tui-input = "0.8.0"
+crossterm = { version = "0.27.0", features = ["event-stream"] }
+tokio = { version = "1.32.0", features = ["full"] }
+tokio-util = "0.7.9"
+futures = "0.3.28"
+signal-hook = "0.3.17"
 

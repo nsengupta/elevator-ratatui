@@ -8,7 +8,8 @@ use crate::app::AppResult;
 
 #[derive(Debug)]
 pub struct TuiLayout {
-    pub display_windows: Rc<[Rect]>,
+    pub output_windows: Rc<[Rect]>,
+    pub input_window: Rc<[Rect]>
 }
 
 impl TuiLayout {
@@ -18,18 +19,22 @@ impl TuiLayout {
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(75), Constraint::Percentage(25)].as_ref());
-        let screen_chunks   = layout.split(terminal.size()?);
+        let screen_chunks_1   = layout.split(terminal.size()?);
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref());
+        let screen_chunks_2 = layout.split(screen_chunks_1[0]);
     
-        Ok(TuiLayout { display_windows: screen_chunks })
+        Ok(TuiLayout { output_windows: screen_chunks_1, input_window: screen_chunks_2 })
     }
 
     pub fn get_window_corners(&self, windows_idx: i16) -> Rect {
 
         Rect {
-            x: self.display_windows[windows_idx as usize].x,
-            y: self.display_windows[windows_idx as usize].y,
-            width: self.display_windows[windows_idx as usize].width,
-            height: self.display_windows[windows_idx as usize].height
+            x: self.output_windows[windows_idx as usize].x,
+            y: self.output_windows[windows_idx as usize].y,
+            width: self.output_windows[windows_idx as usize].width,
+            height: self.output_windows[windows_idx as usize].height
             
         }
     }

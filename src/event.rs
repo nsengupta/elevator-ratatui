@@ -13,8 +13,9 @@ pub enum Event {
     Key(KeyEvent),
     /// Mouse click/scroll.
     Mouse(MouseEvent),
-    /// Terminal resize.
-    Resize(u16, u16),
+
+    Init
+   
 }
 
 /// Terminal event handler.

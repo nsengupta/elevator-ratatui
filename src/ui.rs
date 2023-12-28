@@ -54,7 +54,7 @@ fn create_state_description_paragraph(heading: &str,left: f64, top: f64, right: 
 }
 
 pub fn render_modified(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
-    let chunks = layout.display_windows.clone();
+    let chunks = layout.output_windows.clone();
 
     let elevator_transitions_window = create_state_description_paragraph(
         "Nothing",
@@ -87,7 +87,7 @@ pub fn render_modified(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
 
 /// Renders the user interface widgets.
 pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
-    let chunks = layout.display_windows.clone();
+    let output_chunks = layout.output_windows.clone();
 
     let elevator_transitions_window = create_state_description_paragraph(
         "Line coordinates",
@@ -97,7 +97,7 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
         app.inner_display_setup.building_wall.y2
     );
 
-    f.render_widget(elevator_transitions_window, chunks[0]);
+    f.render_widget(elevator_transitions_window, output_chunks[0]);
 
     let mut text_lines: Vec<TextLine> = Vec::new();
 
@@ -126,7 +126,7 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
     .alignment(Alignment::Center)
     .wrap(Wrap { trim: true });
 
-    f.render_widget(paragraph, chunks[0]);
+    f.render_widget(paragraph, output_chunks[0]);
 
     let canvas = Canvas::default()
         .block(
@@ -156,11 +156,25 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
 
 
         })
-        .x_bounds([0.0, /* 46.0 */ chunks[1].width as f64 ])
-        .y_bounds([0.0, /* 42.0 */ chunks[1].height as f64 ])
+        .x_bounds([0.0, /* 46.0 */ output_chunks[1].width as f64 ])
+        .y_bounds([0.0, /* 42.0 */ output_chunks[1].height as f64 ])
 
         ;
-    f.render_widget(canvas, chunks[1]);
+    f.render_widget(canvas, output_chunks[1]);
+
+    /* let input_windows = layout.input_window.clone();
+
+    let input_canvas = Canvas::default()
+        .block(
+            Block::default()
+            .bg(Color::White)
+            .borders(Borders::ALL)
+            .title("Passenger Input")
+            .style(Style::default().bg(Color::Red).fg(Color::LightYellow))
+        )
+        .marker(Marker::Bar);
+
+    f.render_widget(input_canvas, input_windows[1]); */
 }
 
 
