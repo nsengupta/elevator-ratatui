@@ -89,7 +89,7 @@ pub fn render_modified(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
 pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
     let output_chunks = layout.output_windows.clone();
 
-    let elevator_transitions_window = create_state_description_paragraph(
+   let elevator_transitions_window = create_state_description_paragraph(
         "Line coordinates",
         app.inner_display_setup.building_wall.x1,
         app.inner_display_setup.building_wall.y1,
@@ -115,6 +115,7 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
 
         text_lines.push(next_line);
     }
+
 
     let text = Text::from(text_lines);
 

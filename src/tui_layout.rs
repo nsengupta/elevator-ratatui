@@ -18,11 +18,11 @@ impl TuiLayout {
 
         let layout = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(75), Constraint::Percentage(25)].as_ref());
+            .constraints([Constraint::Percentage(85), Constraint::Percentage(15)].as_ref());
         let screen_chunks_1   = layout.split(terminal.size()?);
         let layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(80), Constraint::Percentage(20)].as_ref());
+            .constraints([Constraint::Percentage(90), Constraint::Percentage(10)].as_ref());
         let screen_chunks_2 = layout.split(screen_chunks_1[0]);
     
         Ok(TuiLayout { output_windows: screen_chunks_1, input_window: screen_chunks_2 })

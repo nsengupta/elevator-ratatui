@@ -24,19 +24,10 @@ use crate::async_event::AppOwnEvent;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // let mut terminal = setup_terminal()?;
-    // let r = terminal.size()?;
-    // println!("Terminal top: {}, left {}, bottom {}, right {}", r.top(),r.left(),r.bottom(),r.right());
-    // let layout = Layout::default()
-    //     .direction(Direction::Horizontal)
-    //     .constraints([Constraint::Percentage(75), Constraint::Percentage(25)].as_ref());
-    // let chunks = layout.split(terminal.size()?);
-    // let mut app_state = AppLayout::new(chunks);
-    
-    let _io_writer = io::stderr();
+
 
     // Initialize the terminal user interface.
-    let backend = CrosstermBackend::new(io::stderr());
+    let backend = CrosstermBackend::new(io::stdout());
     let terminal = Terminal::new(backend)?;
 
     let tui_layout = TuiLayout::new(&terminal)?;
@@ -72,13 +63,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     tui.init()?;
 
-    tui.start();
+    tui.start()?;
 
     // Start the main loop.
     loop {
-        // Render the user interface.
-        // tui.draw(&mut app)?;
-
+    
         // Handle events.
         match tui.next().await {
             Some(AppOwnEvent::Tick) => {
@@ -89,9 +78,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             },
             Some(AppOwnEvent::Key(key_event)) => {
                 app.update_app(AppOwnEvent::Key(key_event))
-                //println!("KeyEvent received.");
+                
             },
-            Some(AppOwnEvent::Mouse(_)) => {},
+            e@ Some(AppOwnEvent::Mouse(m)) => {
+                app.update_app(e.unwrap())
+            },
             None => {},
             _ => {}
             
@@ -103,6 +94,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
             
     }
+
+    app.save_to_file();
 
     Ok(())
 }

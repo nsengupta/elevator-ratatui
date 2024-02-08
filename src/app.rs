@@ -1,6 +1,6 @@
 use std::error;
 use crate::{machinery::CarriageActor, elevator_infra::{ElevatorInfra, FloorCoordinates}, async_event::AppOwnEvent};
-use crossterm::event::{KeyEvent, KeyCode};
+use crossterm::event::{KeyEvent, KeyCode, MouseEvent};
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -12,6 +12,7 @@ pub struct App {
     pub tick_rate: f64,
     pub frame_rate: f64,
     pub last_tick_key_events: Vec<KeyEvent>,
+    pub mouse_at: Vec<MouseEvent>
 
 }
 
@@ -25,7 +26,8 @@ impl App {
             tick_count: 0i32,
             tick_rate,
             frame_rate,
-            last_tick_key_events: Vec::new()
+            last_tick_key_events: Vec::new(),
+            mouse_at: Vec::new()
         } 
     }
 
@@ -58,10 +60,20 @@ impl App {
                 AppOwnEvent::Tick => {
                     self.tick_count = self.tick_count + 1;
                 },
+                AppOwnEvent::Mouse(m) => {
+                    self.mouse_at.push(m);
+                }
                 _ => {}
             }
         }  
           ()
+    }
+
+    pub fn save_to_file(&self) -> () {
+
+        for n in &self.mouse_at {
+            println!(" Mouse-event kind {:?}, at Row{}:Column{}", n.kind, n.row, n.column);
+        }
     }
 
 
