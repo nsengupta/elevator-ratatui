@@ -91,10 +91,10 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
 
    let elevator_transitions_window = create_state_description_paragraph(
         "Line coordinates",
-        app.inner_display_setup.building_wall.x1,
-        app.inner_display_setup.building_wall.y1,
-        app.inner_display_setup.building_wall.x2,
-        app.inner_display_setup.building_wall.y2
+        app.inner_display_setup.floor_as_rects[0].left() as f64,
+        app.inner_display_setup.floor_as_rects[0].top() as f64,
+        (app.inner_display_setup.floor_as_rects[0].left() + app.inner_display_setup.floor_as_rects[0].width) as f64 ,
+        (app.inner_display_setup.floor_as_rects[0].top() + app.inner_display_setup.floor_as_rects[0].height) as f64
     );
 
     f.render_widget(elevator_transitions_window, output_chunks[0]);
@@ -102,7 +102,7 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
     let mut text_lines: Vec<TextLine> = Vec::new();
 
 
-    for floor in &app.inner_display_setup.level_markers {
+    /* for floor in &app.inner_display_setup.level_markers {
 
         let next_line: TextLine = 
             format!("left {}, top {}, width {}, height {}",
@@ -127,7 +127,9 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
     .alignment(Alignment::Center)
     .wrap(Wrap { trim: true });
 
-    f.render_widget(paragraph, output_chunks[0]);
+
+    f.render_widget(paragraph, output_chunks[0]); */
+
 
     let canvas = Canvas::default()
         .block(
@@ -137,7 +139,7 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
             .title("Floors + Carriage")
             .style(Style::default().bg(Color::LightBlue).fg(Color::Gray))
         )
-        .marker(Marker::Bar)
+        .marker(Marker::HalfBlock)
         .paint(|ctx| {
             ctx.draw(&Rectangle {
 
@@ -149,8 +151,19 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
             });
 
             ctx.draw(&app.inner_display_setup.building_wall);
-            for floor in &app.inner_display_setup.level_markers {
-                ctx.draw(floor);
+            /* for floor_level_marker in &app.inner_display_setup.level_markers {
+                ctx.draw(floor_level_marker);
+            } */
+
+            for each_floor in &app.inner_display_setup.floor_as_rects {
+                let next_rectangle = Rectangle {
+                    x: each_floor.x as f64,
+                    y: each_floor.y as f64,
+                    width: each_floor.width as f64,
+                    height: each_floor.height as f64,
+                    color: Color::Yellow
+                };
+                ctx.draw(&next_rectangle);
             }
 
             ctx.draw(&app.inner_display_setup.carriage_shape);

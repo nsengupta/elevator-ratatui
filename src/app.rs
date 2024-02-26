@@ -36,11 +36,11 @@ impl App {
         () 
     }
 
-    pub fn floor_roof_to_reach(&self,floor_id: i16) -> Option<&FloorCoordinates> {
+    /* pub fn floor_roof_to_reach(&self,floor_id: i16) -> Option<&FloorCoordinates> {
 
         self.inner_display_setup.floor_coords.get(floor_id as usize)
 
-    }
+    } */
 
 
     pub fn should_quit_app(&self) -> bool {

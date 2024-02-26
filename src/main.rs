@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
      let carriage_parameters = ElevatorInfra::new(
             tui_layout.get_window_corners(1));
 
-    println!("each floor height {}", carriage_parameters.each_level_height);
+    println!("each floor height {}", carriage_parameters.each_floor_height);
 
 
     let mut user_input = String::new();
