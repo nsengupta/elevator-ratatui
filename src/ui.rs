@@ -1,7 +1,7 @@
 
 use ratatui::{widgets::{Paragraph, Block, Borders, BorderType, Wrap, canvas::{Canvas, Rectangle}}, style::{Style, Color, Stylize}, layout::Alignment, text::{Text, Span, Line as TextLine}, Frame, symbols::Marker};
 
-use crate::{app::App, tui_layout::TuiLayout};
+use crate::{app::App, elevator_infra::{ElevatorInfra, MX_FLOORS}, tui_layout::TuiLayout};
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame<'_>) {
@@ -53,6 +53,45 @@ fn create_state_description_paragraph(heading: &str,left: f64, top: f64, right: 
     paragraph
 }
 
+fn display_inner_structure_as_paragraph(heading: &str,inner: &ElevatorInfra) -> Paragraph<'static> {
+
+    let main_desc = vec![
+        TextLine::from(vec![
+            Span::raw("First"),
+            Span::styled("line",Style::new().green().italic()),
+            ".".into(),
+        ]),
+        TextLine::from("Second line".red()),
+        "Third line".into(),
+        heading.to_owned().into(),
+        format!("carriage_playground.x {}, carriage_playground.y {}, carriage_playground.width {}, carriage_playground.height {}",inner.carriage_playground.x,inner.carriage_playground.y,inner.carriage_playground.width,inner.carriage_playground.height).into(),
+        format!("rect {}, left {}, top {}, right {}, bottom {}",0,inner.floor_as_rects[0].left(), inner.floor_as_rects[0].top(), inner.floor_as_rects[0].right(), inner.floor_as_rects[0].bottom()).into(),
+        format!("rect {}, left {}, top {}, right {}, bottom {}",1,inner.floor_as_rects[1].left(), inner.floor_as_rects[1].top(), inner.floor_as_rects[1].right(), inner.floor_as_rects[1].bottom()).into(),
+        format!("rect {}, left {}, top {}, right {}, bottom {}",2,inner.floor_as_rects[2].left(), inner.floor_as_rects[2].top(), inner.floor_as_rects[2].right(), inner.floor_as_rects[2].bottom()).into(),
+
+    ];
+
+    /* let inner_rect_desc: Vec<String> = 
+        inner.floor_as_rects
+        .iter()
+        .enumerate()
+        .map(|(index,next_rec)| {
+            format!("rect {}, x {}, y {}, width {}, height {}",index,next_rec.x, next_rec.y, next_rec.width, next_rec.height).into()
+        })
+        .collect(); */
+
+    let text = Text::from(main_desc);
+    let paragraph = Paragraph::new(text)
+        .block(Block::new()
+            .title("Elevator-Panel")
+            .borders(Borders::ALL))
+        .style(Style::new().white().on_black())
+        .alignment(Alignment::Center)
+        .wrap(Wrap { trim: true });
+
+    paragraph
+}
+
 pub fn render_modified(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
     let chunks = layout.output_windows.clone();
 
@@ -89,13 +128,15 @@ pub fn render_modified(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
 pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
     let output_chunks = layout.output_windows.clone();
 
-   let elevator_transitions_window = create_state_description_paragraph(
+   /* let elevator_transitions_window = create_state_description_paragraph(
         "Line coordinates",
         app.inner_display_setup.floor_as_rects[0].left() as f64,
         app.inner_display_setup.floor_as_rects[0].top() as f64,
         (app.inner_display_setup.floor_as_rects[0].left() + app.inner_display_setup.floor_as_rects[0].width) as f64 ,
         (app.inner_display_setup.floor_as_rects[0].top() + app.inner_display_setup.floor_as_rects[0].height) as f64
-    );
+    ); */
+
+    let elevator_transitions_window = display_inner_structure_as_paragraph("Floors",&app.inner_display_setup);
 
     f.render_widget(elevator_transitions_window, output_chunks[0]);
 
@@ -130,6 +171,14 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
 
     f.render_widget(paragraph, output_chunks[0]); */
 
+    let floors_as_rectangles: Vec<Rectangle> = 
+            (0..MX_FLOORS).into_iter()
+            .map(|i| {
+                app.inner_display_setup.tranlate_coords_to_viewport(i as usize, (0,0))
+            })
+            .collect();
+
+
 
     let canvas = Canvas::default()
         .block(
@@ -155,15 +204,8 @@ pub fn render_working(app: &mut App,layout: &TuiLayout, f: &mut Frame) {
                 ctx.draw(floor_level_marker);
             } */
 
-            for each_floor in &app.inner_display_setup.floor_as_rects {
-                let next_rectangle = Rectangle {
-                    x: each_floor.x as f64,
-                    y: each_floor.y as f64,
-                    width: each_floor.width as f64,
-                    height: each_floor.height as f64,
-                    color: Color::Yellow
-                };
-                ctx.draw(&next_rectangle);
+            for each_floor_as_rectangle in &floors_as_rectangles{
+                ctx.draw(each_floor_as_rectangle);
             }
 
             ctx.draw(&app.inner_display_setup.carriage_shape);

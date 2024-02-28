@@ -1,21 +1,7 @@
-use std::rc::Rc;
-use ratatui::{widgets::canvas::{Rectangle, Line}, prelude::{Color, Marker, Rect}};
 
-const MX_FLOORS: u16 = 7;
+use ratatui::{layout::Position, prelude::{Color, Marker, Rect}, widgets::canvas::{Line, Rectangle}};
 
-#[derive(Debug)]
-pub struct XYPoint {
-    x: f64,
-    y: f64,
-}
-
-#[derive(Debug)]
-pub struct FloorCoordinates {
-    ground_left: XYPoint,
-    ground_right: XYPoint,
-    roof_left: XYPoint,
-    roof_right: XYPoint
-}
+pub const MX_FLOORS: u16 = 7;
 
 #[derive(Debug)]
 pub struct ElevatorInfra {
@@ -26,9 +12,7 @@ pub struct ElevatorInfra {
     dir_x: i16,
     dir_y: i16,
     pub building_wall: Line,
-    // pub level_markers: Vec<Line>, // Assumption: 8 floors, 0 to 7
     pub each_floor_height: u16,
-    // pub floor_coords: Vec<FloorCoordinates>,
     pub floor_as_rects: Vec<Rect>
 
 }
@@ -65,23 +49,28 @@ impl  ElevatorInfra {
             ) 
             as u16;
 
-        //  remains fixded across all floors, arbitrarily chosen, a little away from (0,0);
-        //  obviously, the bottom_left_x, if defined, will have the same value
-        let each_floor_top_left_x: u16 = 3; 
+        //  Remains fixed across all floors
+        //  Obviously, the bottom_left_x, if defined, will have the same value
+        //  Leave a little space from left border
+        let each_floor_top_left_x: u16 = carriage_playground.x + 1; 
 
-        let each_floor_width = separator_marker_end_x as u16 - each_floor_top_left_x;  
+        //  Measured from the wall separating the tunnel and floors
+        //  Leave a little space from the right border
+        let each_floor_width = carriage_playground.width - 1;  
 
         //  Obviously, every floor will have a different top_left_y
-        let all_floor_top_left_y: Vec<u16> = 
-                        (0..MX_FLOORS).into_iter()
+        let floor_specific_top_left_y: Vec<u16> = 
+                        (0..MX_FLOORS)
+                        .rev()
+                        .into_iter()
                         .map(|next_floor| {
-                            separator.y1 as u16 + (each_floor_height * next_floor)
+                            (carriage_playground.y + 1) as u16 + (each_floor_height * next_floor)
                         })
                         .collect()
                         ;
 
         let all_floors_represented_as_rects: Vec<Rect> = 
-                all_floor_top_left_y.iter()
+                floor_specific_top_left_y.iter()
                 .map(|next_floor_top_left_y| {
                    Rect{
                         x:       each_floor_top_left_x,
@@ -93,39 +82,6 @@ impl  ElevatorInfra {
                 .collect()
                 ;        
 
-        /* let mut floor_ground_screen_position: Vec<(f64,f64)> = Vec::new();     
-        for index in 0..MX_FLOORS {  
-            floor_ground_screen_position.push((separator.x1, separator.y1 + (each_floor_height * index) as f64));
-        }   
-        
-        let floor_screen_markers = 
-                floor_ground_screen_position.iter()
-                .map(|next_posn|{
-                        Line::new(
-                            3.0,  // Leave a space at the left
-                            next_posn.1,
-                            next_posn.0,
-                            next_posn.1,
-                            Color::Blue
-                        )
-                    })
-                .collect::<Vec<Line>>()
-                ;
-                let floor_coords = 
-                floor_screen_markers.iter()
-                    .as_slice()
-                    .windows(2)
-                    .map(|next_pair| {
-                      FloorCoordinates {
-                        ground_left: XYPoint{ x: next_pair[0].x1, y: next_pair[0].y1 },
-                        ground_right: XYPoint{ x: next_pair[0].x2,y: next_pair[0].y2 },
-                        roof_left: XYPoint{ x: next_pair[1].x1, y: next_pair[1].y1 },
-                        roof_right: XYPoint{ x: next_pair[1].x2, y: next_pair[1].y2 },
-                      }
-                    })
-                    .collect::<Vec<FloorCoordinates>>()
-                    ;
- */
         let carriage_shape = Rectangle {
             x: separator.x1 + 1.0,
             y: separator.y1,
@@ -142,12 +98,33 @@ impl  ElevatorInfra {
             dir_x: 0,
             dir_y: 0,
             building_wall: separator,
-            // level_markers: floor_screen_markers,
             each_floor_height,
-            // floor_coords,
             floor_as_rects: all_floors_represented_as_rects
 
         }
+    }
+
+    pub fn tranlate_coords_to_viewport(&self,floor_index: usize, origin: (u16,u16)) -> Rectangle {
+        let floor_rect = self.floor_as_rects[floor_index as usize];
+        let left_top_y = origin.1 + (floor_index as u16 + 1) * floor_rect.height;
+        Rectangle {
+            x: origin.0 as f64,
+            y: left_top_y as f64,
+            width: floor_rect.width as f64,
+            height: floor_rect.height as f64,
+            color: Color::LightBlue
+        }
+    }
+
+    pub fn indicate_floor_chosen(&self,posn: (u16,u16)) -> Option<u16> {
+
+        for next_floor in self.floor_as_rects.iter().enumerate() {
+            if next_floor.1.contains(Position {x: posn.0, y: posn.1}) {
+                return Some(next_floor.0 as u16);
+            }     
+        }
+
+        None
     }
 
     pub fn tell_me_more(&self) -> String {

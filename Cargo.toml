@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 # tui = "0.16"
 
-ratatui = "0.26.0"
+ratatui = "0.26.1"
 clearscreen = "2.0.1"
 figlet-rs = "0.1.5"
 tui-input = "0.8.0"

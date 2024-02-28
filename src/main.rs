@@ -40,8 +40,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let screen_1 = tui_layout.get_window_corners(1);
 
-    println!("Screen section 1 | top-left-x {} / top-left-y {}, bottom-right-x {} / bottom_right-y {}",
-                screen_1.left(),screen_1.top(),screen_1.right(),screen_1.bottom()
+    println!("Screen section 1 | top-left-x {} / top-left-y {}, width {} / height {}",
+                screen_1.left(),screen_1.top(),screen_1.width,screen_1.height
         );
 
 

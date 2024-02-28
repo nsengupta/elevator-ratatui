@@ -1,6 +1,9 @@
 use std::error;
-use crate::{machinery::CarriageActor, elevator_infra::{ElevatorInfra, FloorCoordinates}, async_event::AppOwnEvent};
+use crate::{machinery::CarriageActor, elevator_infra::{ElevatorInfra}, async_event::AppOwnEvent};
 use crossterm::event::{KeyEvent, KeyCode, MouseEvent};
+use ratatui::layout::Position;
+use crossterm::event::MouseEventKind::Down;
+use crossterm::event::MouseButton::Left;
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -36,12 +39,6 @@ impl App {
         () 
     }
 
-    /* pub fn floor_roof_to_reach(&self,floor_id: i16) -> Option<&FloorCoordinates> {
-
-        self.inner_display_setup.floor_coords.get(floor_id as usize)
-
-    } */
-
 
     pub fn should_quit_app(&self) -> bool {
         self.to_quit
@@ -71,10 +68,52 @@ impl App {
 
     pub fn save_to_file(&self) -> () {
 
+        /* for p in self.inner_display_setup.floor_as_rects.iter().enumerate() {
+            println!("Rect index {}", p.0);
+            for j in p.1.positions() {
+                println!("{:?}", j);
+            }
+           
+        } */
+        
+
         for n in &self.mouse_at {
-            println!(" Mouse-event kind {:?}, at Row{}:Column{}", n.kind, n.row, n.column);
+            /* let maybe_floor = self.inner_display_setup.indicate_floor_chosen((n.column,n.row)); */
+
+            match n {
+                MouseEvent { kind: Down(_), column: c, row: r, modifiers: _ } => {
+                    for next_floor in self.inner_display_setup.floor_as_rects.iter().enumerate() {
+                        let is_in = next_floor.1.contains(Position{x: *c, y: *r });
+                        println!(" Mouse-event kind {:?}, at (Row{} : Column{}), Rect [{}] (left {}, top {}, right {}, bottom {}, contains? {}", 
+                                    n.kind, 
+                                    n.row, 
+                                    n.column,
+                                    next_floor.0,
+                                    next_floor.1.left(),
+                                    next_floor.1.top(),
+                                    next_floor.1.right(),
+                                    next_floor.1.bottom(),
+                                    if is_in { "Yes".to_owned() } else { "No".to_owned() }
+                            );
+                        }
+                        /* println!(" Mouse-event kind {:?}, at (Row{} : Column{})", 
+                                    n.kind, 
+                                    n.row, 
+                                    n.column,
+                            ); */
+
+                    },
+                _ => {}
+            }
+ 
         }
+
+
+        /*     println!(" Mouse-event kind {:?}, at Row{}:Column{}, floor {}", 
+                            n.kind, 
+                            n.row, 
+                            n.column,
+                            maybe_floor.map_or(10, |x| x)
+                    ); */
     }
-
-
-}
+ }
