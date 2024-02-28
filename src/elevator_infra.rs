@@ -1,4 +1,5 @@
 
+use crossterm::cursor::position;
 use ratatui::{layout::Position, prelude::{Color, Marker, Rect}, widgets::canvas::{Line, Rectangle}};
 
 pub const MX_FLOORS: u16 = 7;
@@ -13,7 +14,8 @@ pub struct ElevatorInfra {
     dir_y: i16,
     pub building_wall: Line,
     pub each_floor_height: u16,
-    pub floor_as_rects: Vec<Rect>
+    pub floor_as_rects: Vec<Rect>,
+    pub floors_having_passengers: Vec<bool>
 
 }
 
@@ -90,6 +92,8 @@ impl  ElevatorInfra {
             color: Color::Yellow,
         };
 
+        let floors_having_passengers: Vec<bool> = vec![false; MX_FLOORS as usize];
+
         ElevatorInfra {
             carriage_shape,
             carriage_playground,
@@ -99,32 +103,39 @@ impl  ElevatorInfra {
             dir_y: 0,
             building_wall: separator,
             each_floor_height,
-            floor_as_rects: all_floors_represented_as_rects
+            floor_as_rects: all_floors_represented_as_rects,
+            floors_having_passengers: floors_having_passengers
 
         }
     }
 
     pub fn tranlate_coords_to_viewport(&self,floor_index: usize, origin: (u16,u16)) -> Rectangle {
         let floor_rect = self.floor_as_rects[floor_index as usize];
-        let left_top_y = origin.1 + (floor_index as u16 + 1) * floor_rect.height;
+        let passenger_at_floor_indicator = self.floors_having_passengers[floor_index];
+        let left_top_y = origin.1 + (floor_index as u16 * floor_rect.height);
         Rectangle {
             x: origin.0 as f64,
             y: left_top_y as f64,
             width: floor_rect.width as f64,
             height: floor_rect.height as f64,
-            color: Color::LightBlue
+            color: if passenger_at_floor_indicator { Color::Red } else { Color::LightBlue }
         }
     }
 
-    pub fn indicate_floor_chosen(&self,posn: (u16,u16)) -> Option<u16> {
+    pub fn is_passenger_at_reachable_floor(&self,mouse_click_position: Position) -> Option<u16> {
 
         for next_floor in self.floor_as_rects.iter().enumerate() {
-            if next_floor.1.contains(Position {x: posn.0, y: posn.1}) {
+            if next_floor.1.contains(mouse_click_position) {
                 return Some(next_floor.0 as u16);
             }     
         }
 
         None
+    }
+
+    pub fn on_passenger_summoning_to_floor(&mut self, at_floor: u16) -> () {
+
+        self.floors_having_passengers[at_floor as usize] = true;
     }
 
     pub fn tell_me_more(&self) -> String {

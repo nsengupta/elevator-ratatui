@@ -1,6 +1,6 @@
 use std::error;
 use crate::{machinery::CarriageActor, elevator_infra::{ElevatorInfra}, async_event::AppOwnEvent};
-use crossterm::event::{KeyEvent, KeyCode, MouseEvent};
+use crossterm::event::{KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::Position;
 use crossterm::event::MouseEventKind::Down;
 use crossterm::event::MouseButton::Left;
@@ -51,7 +51,7 @@ impl App {
               KeyCode::Char('q') => self.quit(),
               _ => {},
             }
-          }
+        }
         else {
             match app_event {
                 AppOwnEvent::Tick => {
@@ -59,11 +59,25 @@ impl App {
                 },
                 AppOwnEvent::Mouse(m) => {
                     self.mouse_at.push(m);
-                }
-                _ => {}
-            }
-        }  
-          ()
+                    match m.kind {
+                        MouseEventKind::Down(MouseButton::Left) => {
+                            if let Some(floor) = 
+                                self.inner_display_setup
+                                .is_passenger_at_reachable_floor(
+                                    Position{x: m.column, y: m.row}
+                                ) {
+
+                                self.inner_display_setup.on_passenger_summoning_to_floor(floor);
+                            };
+                        
+                        }, 
+                        _ => {} // ignore other mouse events
+                    
+                    };
+                },
+                _ => {}  //ignore other App events
+            };
+        }
     }
 
     pub fn save_to_file(&self) -> () {
