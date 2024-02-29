@@ -1,8 +1,17 @@
 
-use crossterm::cursor::position;
-use ratatui::{layout::Position, prelude::{Color, Marker, Rect}, widgets::canvas::{Line, Rectangle}};
 
-pub const MX_FLOORS: u16 = 7;
+
+use ratatui::{layout::{Margin, Position}, prelude::{Color, Marker, Rect}, widgets::canvas::Rectangle};
+
+pub const MX_FLOORS: u16 = 8;
+
+#[derive(Debug)]
+pub struct Separator {
+    pub start_x: f64,
+    pub start_y: f64,
+    pub end_x:   f64,
+    pub end_y:   f64
+}
 
 #[derive(Debug)]
 pub struct ElevatorInfra {
@@ -10,9 +19,7 @@ pub struct ElevatorInfra {
     pub carriage_playground: Rect,
     pub marker: Marker,
     tick_count: i32,
-    dir_x: i16,
-    dir_y: i16,
-    pub building_wall: Line,
+    pub building_wall: Separator,
     pub each_floor_height: u16,
     pub floor_as_rects: Vec<Rect>,
     pub floors_having_passengers: Vec<bool>
@@ -22,43 +29,36 @@ pub struct ElevatorInfra {
 impl  ElevatorInfra {
     pub(crate) fn new(movement_area: Rect) -> Self {
 
-        let marker = Marker::Braille;
-        let carriage_playground = Rect {
-            x:      movement_area.left() + 1,
-            y:      movement_area.top() + 1,
-            width:  movement_area.width - 1,
-            height: movement_area.height - 1
-        };
+        let carriage_playground = movement_area.inner(&Margin{ horizontal: 1, vertical: 1});
 
         // Separator between the tunnel where the carriage moves and the floors where the passengers wait.
-        let separator_marker_start_x = carriage_playground.width  as f64 / 2.0;
-        let separator_marker_start_y = 1.0 as f64; // carriage_playground.y + carriage_playground.height;
+        let separator_marker_start_x = carriage_playground.left() as f64 + carriage_playground.width  as f64 / 2.0;
+        let separator_marker_start_y = carriage_playground.top() as f64; // carriage_playground.y + carriage_playground.height;
         let separator_marker_end_x = separator_marker_start_x; // x doesn't change for the wall
-        let separator_marker_end_y = carriage_playground.height as f64; // Top most level on the playground
+        let separator_marker_end_y = carriage_playground.bottom() as f64; // Top most level on the playground
 
         // We need a line to display the separator on the screen.
-        let separator = Line::new(
-                        separator_marker_start_x  as f64,  // x1
-                        separator_marker_start_y  as f64, // y1
-                        separator_marker_end_x  as f64,   // x2
-                        separator_marker_end_y  as f64,   // y2
-                        Color::Blue
-                    );
+        let separator = Separator {
+                        start_x: separator_marker_start_x  as f64,  // x1
+                        start_y: separator_marker_start_y as f64, // y1
+                        end_x: separator_marker_end_x  as f64,   // x2
+                        end_y: separator_marker_end_y  as f64,   // y2
+        };
 
         let each_floor_height = 
-            f64::ceil(
-                f64::abs(separator.y2 - separator.y1) / MX_FLOORS as f64
+            f64::floor(
+                (carriage_playground.height as f64) / MX_FLOORS as f64
             ) 
             as u16;
 
         //  Remains fixed across all floors
         //  Obviously, the bottom_left_x, if defined, will have the same value
         //  Leave a little space from left border
-        let each_floor_top_left_x: u16 = carriage_playground.x + 1; 
+        let each_floor_top_left_x: u16 = carriage_playground.x; 
 
         //  Measured from the wall separating the tunnel and floors
         //  Leave a little space from the right border
-        let each_floor_width = carriage_playground.width - 1;  
+        let each_floor_width = (carriage_playground.width as f64 / 2.0) as u16 ;  
 
         //  Obviously, every floor will have a different top_left_y
         let floor_specific_top_left_y: Vec<u16> = 
@@ -66,7 +66,7 @@ impl  ElevatorInfra {
                         .rev()
                         .into_iter()
                         .map(|next_floor| {
-                            (carriage_playground.y + 1) as u16 + (each_floor_height * next_floor)
+                            carriage_playground.y as u16 + (each_floor_height * next_floor)
                         })
                         .collect()
                         ;
@@ -85,8 +85,8 @@ impl  ElevatorInfra {
                 ;        
 
         let carriage_shape = Rectangle {
-            x: separator.x1 + 1.0,
-            y: separator.y1,
+            x: separator.start_x + 1.0,
+            y: separator.start_y,
             width: 10.0,
             height: each_floor_height as f64,
             color: Color::Yellow,
@@ -99,8 +99,6 @@ impl  ElevatorInfra {
             carriage_playground,
             marker: Marker::Block,
             tick_count: 0,
-            dir_x: 0,
-            dir_y: 0,
             building_wall: separator,
             each_floor_height,
             floor_as_rects: all_floors_represented_as_rects,
@@ -122,7 +120,17 @@ impl  ElevatorInfra {
         }
     }
 
-    pub fn is_passenger_at_reachable_floor(&self,mouse_click_position: Position) -> Option<u16> {
+    pub fn get_carriage_displacement_map_per_floor(&self,origin: (u16,u16)) -> Vec<(f64,f64)> {
+        self.floor_as_rects.iter().enumerate()
+                .map(|(floor_index,rect)| {
+                    let left_bottom_y = origin.1 + (floor_index as u16 * rect.height);
+                    let left_top_y    = left_bottom_y + rect.height;
+                    (left_top_y as f64, left_bottom_y as f64) 
+                })
+                .collect()  
+    }
+
+    pub fn is_passenger_calling_to_reachable_floor(&self,mouse_click_position: Position) -> Option<u16> {
 
         for next_floor in self.floor_as_rects.iter().enumerate() {
             if next_floor.1.contains(mouse_click_position) {
@@ -133,9 +141,16 @@ impl  ElevatorInfra {
         None
     }
 
-    pub fn on_passenger_summoning_to_floor(&mut self, at_floor: u16) -> () {
+    pub fn on_passenger_summoning(&mut self, at_floor: u16) -> () {
 
         self.floors_having_passengers[at_floor as usize] = true;
+    }
+
+    pub fn is_any_passenger_waiting(&self) -> Option<u16> {
+        for (floor_no,is_waiting) in self.floors_having_passengers.iter().enumerate() {
+            if *is_waiting { return Some (floor_no as u16)}
+        }
+        None
     }
 
     pub fn tell_me_more(&self) -> String {

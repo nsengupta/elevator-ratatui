@@ -1,7 +1,7 @@
 use crate::app::{App, AppResult};
 use crate::async_event::AppOwnEvent;
 use crate::tui_layout::{self, TuiLayout};
-use crate::ui;
+use crate::ui::{self, DisplayManager};
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event as CrosstermEvent, KeyEventKind};
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
 use futures::{FutureExt, StreamExt};
@@ -32,11 +32,13 @@ pub struct Tui<B: Backend> {
     pub event_tx: UnboundedSender<AppOwnEvent>,
     pub frame_rate: f64,
     pub tick_rate: f64,
+
+    pub ui: DisplayManager
 }
 
 impl<B: Backend> Tui<B> {
 
-    pub fn new(terminal: Terminal<B>, tui_layout: TuiLayout) -> Self {
+    pub fn new(terminal: Terminal<B>, tui_layout: TuiLayout, ui: DisplayManager) -> Self {
         let (event_tx, event_rx) = mpsc::unbounded_channel();
         let cancellation_token = CancellationToken::new();
         let task = tokio::spawn(async {});
@@ -49,6 +51,7 @@ impl<B: Backend> Tui<B> {
             event_tx,
             frame_rate: 30.0,
             tick_rate: 1.0,
+            ui
         }
     }
 
@@ -150,7 +153,7 @@ impl<B: Backend> Tui<B> {
     /// [`rendering`]: crate::ui:render
     pub fn draw(&mut self, app: &mut App) -> AppResult<()> {
         self.terminal
-            .draw(|frame| ui::render_working(app, &self.layout, frame))?;
+            .draw(|frame| self.ui.render_working(app, &self.layout, frame))?;
         Ok(())
     }
 

@@ -61,13 +61,13 @@ impl App {
                     self.mouse_at.push(m);
                     match m.kind {
                         MouseEventKind::Down(MouseButton::Left) => {
-                            if let Some(floor) = 
+                            if let Some(floor_no) = 
                                 self.inner_display_setup
-                                .is_passenger_at_reachable_floor(
+                                .is_passenger_calling_to_reachable_floor(
                                     Position{x: m.column, y: m.row}
                                 ) {
 
-                                self.inner_display_setup.on_passenger_summoning_to_floor(floor);
+                                self.inner_display_setup.on_passenger_summoning(floor_no);
                             };
                         
                         }, 
