@@ -23,8 +23,10 @@ colored = "2.0.4"
 ractor = "0.9.5"
 async-trait = "0.1"
 clap = { version = "4", features = ["derive"] }
-env_logger = "0.10"
+env_logger = "0.11.2"
 log = "0.4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["registry", "env-filter", "std"] }
 
 
 

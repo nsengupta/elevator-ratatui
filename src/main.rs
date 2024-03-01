@@ -10,12 +10,17 @@ mod ui;
 
 use std::error::Error;
 use std::io;
-use std::thread::current;
+use std::path::PathBuf;
+
 
 use app::App;
 use elevator_infra::ElevatorInfra;
+use log::info;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::Layer;
 use tui::Tui;
 use tui_layout::TuiLayout;
 use ui::DisplayManager;
@@ -27,6 +32,8 @@ use crate::async_event::AppOwnEvent;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
 
+
+    initialize_logging()?;
 
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(io::stdout());
@@ -89,6 +96,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             Some(AppOwnEvent::Tick) => {
 
                 if let Some(floor) = app.inner_display_setup.is_any_passenger_waiting() {
+                    // let log_message = format!("Tick received, current {}, target {}",current_left_top_y,floor_locations[floor as usize].0).to_owned();
+                    info!("First log message here");
                     up_events_log.push(format!("Tick received, current {}, target {}",current_left_top_y,floor_locations[floor as usize].0));
                     if current_left_top_y < floor_locations[floor as usize].0 {
                         current_left_top_y += 1.0;
@@ -136,3 +145,31 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
+pub fn initialize_logging() -> Result<(), Box<dyn Error>> {
+    let directory = PathBuf::from("./");
+    std::fs::create_dir_all(directory.clone())?;
+    let log_path = directory.join("elevator.log");
+    let log_file = std::fs::File::create(log_path)?;
+   /*  std::env::set_var(
+      "RUST_LOG",
+      std::env::var("RUST_LOG")
+        .or_else(|_| std::env::var(LOG_ENV.clone()))
+        .unwrap_or_else(|_| format!("{}=info", env!("CARGO_CRATE_NAME"))),
+    ); */
+    let file_subscriber = tracing_subscriber::fmt::layer()
+      .with_file(true)
+      .with_line_number(true)
+      .with_writer(log_file)
+      .with_target(false)
+      .with_ansi(false)
+      .with_filter(tracing_subscriber::filter::EnvFilter::from_default_env());
+    
+    tracing_subscriber::registry()
+    .with(file_subscriber)
+    // .with(ErrorLayer::default())
+    .init();
+    
+    Ok(())
+  }
+  
