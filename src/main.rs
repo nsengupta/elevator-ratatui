@@ -1,11 +1,10 @@
 mod tui;
 mod async_event;
-mod handler;
 mod app;
 mod elevator_infra;
-mod machinery;
 mod tui_layout;
 mod ui;
+mod conversation;
 
 
 use std::error::Error;
@@ -21,12 +20,10 @@ use ratatui::backend::CrosstermBackend;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::Layer;
-use tui::Tui;
 use tui_layout::TuiLayout;
 use ui::DisplayManager;
 
 use crate::async_event::AppOwnEvent;
-
 
 
 #[tokio::main]
@@ -72,76 +69,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
     stdin.read_line(&mut user_input);      
 
 
-     let mut tui = Tui::new(terminal, tui_layout, display_manager);
+    // let mut tui = Tui::new(terminal, tui_layout, display_manager);
      
      // Create an application.
-     let mut app = App::new(carriage_parameters, 1.0, 30.0);
+     let mut app = App::new(carriage_parameters, 1.0, 30.0,terminal,tui_layout,display_manager);
 
-    tui.init()?;
+    app.init()?;
 
-    tui.start()?;
+    app.start()?;
 
-    let floor_locations = app.inner_display_setup.get_carriage_displacement_map_per_floor((0,0));
+    app.run().await.unwrap();
 
-    let current_left_top_y_init = floor_locations[0].0; // Ground floor
-    let mut current_left_top_y = current_left_top_y_init;
-
-    let mut up_events_log: Vec<String> = Vec::new();
-
-    // Start the main loop.
-    loop {
     
-        // Handle events.
-        match tui.next().await {
-            Some(AppOwnEvent::Tick) => {
-
-                if let Some(floor) = app.inner_display_setup.is_any_passenger_waiting() {
-                    // let log_message = format!("Tick received, current {}, target {}",current_left_top_y,floor_locations[floor as usize].0).to_owned();
-                    info!("First log message here");
-                    up_events_log.push(format!("Tick received, current {}, target {}",current_left_top_y,floor_locations[floor as usize].0));
-                    if current_left_top_y < floor_locations[floor as usize].0 {
-                        current_left_top_y += 1.0;
-                        app.inner_display_setup.on_tick((0,1));
-                        tui.ui.move_carriage_up((0.0,1.0));
-                        up_events_log.push(format!("On tick, current_top_left_y {}, dest {}", current_left_top_y, floor_locations[floor as usize].0));
-                    }
-                }
-                else {
-                    up_events_log.push(format!("Tick received, no passenger waiting"));
-                }
-               
-            },
-            Some(AppOwnEvent::Render) => {
-                tui.draw(&mut app)?;
-            },
-            Some(AppOwnEvent::Key(key_event)) => {
-                app.update_app(AppOwnEvent::Key(key_event))
-                
-            },
-            e@ Some(AppOwnEvent::Mouse(m)) => {
-                app.update_app(e.unwrap())
-            },
-            None => {},
-            _ => {}
-            
-        }
-
-        if app.should_quit_app() {
-            tui.exit()?;
-            break;
-        }
-            
-    }
-
-    app.save_to_file();
-
-    println!("current left top at init {}", current_left_top_y_init);
-
-    up_events_log.iter().for_each(|s| println!("{}",s));
-
-    floor_locations.iter().enumerate().for_each(|l| {
-        println!("floor_index {}, floor_left_bottm_y {:?} floor_left_top_y {:?}", l.0 as u16, l.1.1, l.1.0);
-    });
 
     Ok(())
 }

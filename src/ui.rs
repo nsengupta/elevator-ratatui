@@ -1,7 +1,7 @@
 
-use ratatui::{layout::Alignment, style::{Color, Style, Stylize}, symbols::Marker, text::{Line as TextLine, Span, Text}, widgets::{canvas::{Canvas, Line, Rectangle}, Block, BorderType, Borders, Paragraph, Wrap}, Frame};
+use ratatui::{backend::Backend, layout::Alignment, style::{Color, Style, Stylize}, symbols::Marker, text::{Line as TextLine, Span, Text}, widgets::{canvas::{Canvas, Line, Rectangle}, Block,Borders, Paragraph, Wrap}, Frame};
 
-use crate::{app::App, elevator_infra::ElevatorInfra, tui_layout::TuiLayout};
+use crate::{elevator_infra::ElevatorInfra, tui_layout::TuiLayout};
 
 #[derive(Debug)]
 pub struct CarriageShape {
@@ -19,6 +19,11 @@ impl CarriageShape {
 
     pub fn move_down(&mut self, displacement: f64) -> &mut Self {
         self.bottom_left_y_offset_from_origin -= displacement;
+        self
+    }
+
+    pub fn move_to_ground(&mut self) -> &mut Self {
+        self.bottom_left_x_offset_from_origin = 0.0;
         self
     }
 }
@@ -137,14 +142,14 @@ impl DisplayManager {
     
     
     /// Renders the user interface widgets.
-    pub fn render_working(&mut self,app: &mut App,layout: &TuiLayout, f: &mut Frame) {
+    pub fn render_working (&mut self,infra: &ElevatorInfra,layout: &TuiLayout, f: &mut Frame) {
 
         let output_chunks = layout.output_windows.clone();
 
         let floors_as_rectangles: Vec<Rectangle> = 
-                    DisplayManager::tranlate_coords_to_viewport(app, (0.0,0.0));
+                    DisplayManager::translate_floor_coords_to_viewport_rectangles(infra, (0.0,0.0));
     
-        let elevator_transitions_window = DisplayManager::display_inner_structure_as_paragraph("Floors",&app.inner_display_setup, &self.carriage, &floors_as_rectangles);
+        let elevator_transitions_window = DisplayManager::display_inner_structure_as_paragraph("Floors",&infra, &self.carriage, &floors_as_rectangles);
     
         f.render_widget(elevator_transitions_window, output_chunks[0]);
     
@@ -160,10 +165,10 @@ impl DisplayManager {
             .paint(|ctx| {
                 
                 ctx.draw(&Line {
-                            x1: (0.0 + (app.inner_display_setup.carriage_playground.width as f64 / 2.0)),
+                            x1: (0.0 + (infra.carriage_playground.width as f64 / 2.0)),
                             y1:  0.0,
-                            x2: (0.0 + (app.inner_display_setup.carriage_playground.width as f64 / 2.0)),
-                            y2: (0.0 + app.inner_display_setup.carriage_playground.height as f64),
+                            x2: (0.0 + (infra.carriage_playground.width as f64 / 2.0)),
+                            y2: (0.0 + infra.carriage_playground.height as f64),
                             color:Color::Black
     
                 });
@@ -178,8 +183,8 @@ impl DisplayManager {
     
             })
            
-            .x_bounds([0.0, app.inner_display_setup.carriage_playground.width as f64 ])
-            .y_bounds([0.0, app.inner_display_setup.carriage_playground.height as f64 ])
+            .x_bounds([0.0, infra.carriage_playground.width as f64 ])
+            .y_bounds([0.0, infra.carriage_playground.height as f64 ])
             ;
 
 
@@ -197,17 +202,19 @@ impl DisplayManager {
         }
     }
     
-    pub fn tranlate_coords_to_viewport(app: &App, origin: (f64,f64)) -> Vec<Rectangle> {
+    pub fn translate_floor_coords_to_viewport_rectangles(
+                infra: &ElevatorInfra, origin: (f64,f64)) -> 
+            Vec<Rectangle> {
     
-        let f = app.inner_display_setup.floor_as_rects.iter().enumerate()
+        let f = infra.floor_as_rects.iter().enumerate()
                 .rev()
                 .map(|(index,next)| {
                     Rectangle {
                         x: origin.0,
                         y: (origin.1 + (next.height as f64 * index as f64)),
-                        width: (app.inner_display_setup.carriage_playground.width as f64 / 2.0),
-                        height: app.inner_display_setup.each_floor_height as f64,
-                        color: if app.inner_display_setup.floors_having_passengers[index] 
+                        width: (infra.carriage_playground.width as f64 / 2.0),
+                        height: infra.each_floor_height as f64,
+                        color: if infra.floors_having_passengers[index] 
                                 { Color::LightGreen }
                                else 
                                 { Color::Gray  } 

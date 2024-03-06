@@ -20,7 +20,9 @@ signal-hook = "0.3.17"
 
 rust-fsm = "0.6.1"
 colored = "2.0.4"
-ractor = "0.9.5"
+ractor = { version = "0.9", features = ["cluster"] }
+ractor_cluster = "0.9"
+
 async-trait = "0.1"
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.11.2"

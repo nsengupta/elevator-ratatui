@@ -130,7 +130,7 @@ impl  ElevatorInfra {
                 .collect()  
     }
 
-    pub fn is_passenger_calling_to_reachable_floor(&self,mouse_click_position: Position) -> Option<u16> {
+    pub fn is_passenger_waiting_at_reachable_floor(&self,mouse_click_position: Position) -> Option<u16> {
 
         for next_floor in self.floor_as_rects.iter().enumerate() {
             if next_floor.1.contains(mouse_click_position) {

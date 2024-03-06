@@ -1,5 +1,6 @@
 use crate::app::{App, AppResult};
 use crate::async_event::AppOwnEvent;
+use crate::elevator_infra::ElevatorInfra;
 use crate::tui_layout::{self, TuiLayout};
 use crate::ui::{self, DisplayManager};
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event as CrosstermEvent, KeyEventKind};
@@ -19,16 +20,16 @@ use tokio::{
 };
 
 #[derive(Debug)]
-pub struct Tui<B: Backend> {
+pub struct Tui<CrosstermBackend: ratatui::backend::Backend> {
     /// Interface to the Terminal.
-    terminal: Terminal<B>,
+    terminal: Terminal<CrosstermBackend>,
 
     /// Layout on screen for various widgets
     pub layout: TuiLayout,
 
     pub task: JoinHandle<()>,
     pub cancellation_token: CancellationToken,
-    pub event_rx: UnboundedReceiver<AppOwnEvent>,
+    // pub event_rx: UnboundedReceiver<AppOwnEvent>,
     pub event_tx: UnboundedSender<AppOwnEvent>,
     pub frame_rate: f64,
     pub tick_rate: f64,
@@ -38,8 +39,8 @@ pub struct Tui<B: Backend> {
 
 impl<B: Backend> Tui<B> {
 
-    pub fn new(terminal: Terminal<B>, tui_layout: TuiLayout, ui: DisplayManager) -> Self {
-        let (event_tx, event_rx) = mpsc::unbounded_channel();
+    pub fn new(terminal: Terminal<B>, tui_layout: TuiLayout, ui: DisplayManager, event_tx:UnboundedSender<AppOwnEvent>) -> Self {
+        // let (event_tx, event_rx) = mpsc::unbounded_channel();
         let cancellation_token = CancellationToken::new();
         let task = tokio::spawn(async {});
         Self {
@@ -47,7 +48,6 @@ impl<B: Backend> Tui<B> {
             layout: tui_layout,
             task,
             cancellation_token,
-            event_rx,
             event_tx,
             frame_rate: 30.0,
             tick_rate: 1.0,
@@ -151,9 +151,9 @@ impl<B: Backend> Tui<B> {
     ///
     /// [`Draw`]: tui::Terminal::draw
     /// [`rendering`]: crate::ui:render
-    pub fn draw(&mut self, app: &mut App) -> AppResult<()> {
+    pub fn draw(&mut self, inner_infra: &ElevatorInfra) -> AppResult<()> {
         self.terminal
-            .draw(|frame| self.ui.render_working(app, &self.layout, frame))?;
+            .draw(|frame| self.ui.render_working(inner_infra, &self.layout, frame))?;
         Ok(())
     }
 
@@ -185,9 +185,9 @@ impl<B: Backend> Tui<B> {
         Ok(())
     }
 
-    pub async fn next(&mut self) -> Option<AppOwnEvent> {
+   /*  pub async fn next(&mut self) -> Option<AppOwnEvent> {
         self.event_rx.recv().await
-    }
+    } */
 
     pub fn cancel(&self) {
         self.cancellation_token.cancel();
