@@ -2,8 +2,34 @@
 
 
 use ratatui::{layout::{Margin, Position}, prelude::{Color, Marker, Rect}, widgets::canvas::Rectangle};
+use tracing::info;
 
 pub const MX_FLOORS: u16 = 8;
+
+#[derive(Debug)]
+pub struct CarriageBox {
+    pub  bottom_left_x_offset_from_origin: f64,
+    pub  bottom_left_y_offset_from_origin: f64,
+    pub  width:  f64,
+    pub  height: f64
+}
+
+impl CarriageBox {
+    pub fn move_up(&mut self, displacement: f64) -> &mut Self {
+        self.bottom_left_y_offset_from_origin += displacement;
+        self
+    }
+
+    pub fn move_down(&mut self, displacement: f64) -> &mut Self {
+        self.bottom_left_y_offset_from_origin -= displacement;
+        self
+    }
+
+    pub fn move_to_ground(&mut self) -> &mut Self {
+        self.bottom_left_y_offset_from_origin = 0.0;
+        self
+    }
+}
 
 #[derive(Debug)]
 pub struct Separator {
@@ -14,19 +40,22 @@ pub struct Separator {
 }
 
 #[derive(Debug)]
-pub struct ElevatorInfra {
-    pub carriage_shape: Rectangle,
+pub struct ElevatorVisualInfra {
+    pub carriage_box: CarriageBox,
     pub carriage_playground: Rect,
-    pub marker: Marker,
     tick_count: i32,
     pub building_wall: Separator,
     pub each_floor_height: u16,
     pub floor_as_rects: Vec<Rect>,
-    pub floors_having_passengers: Vec<bool>
+    pub floors_having_passengers: Vec<bool>,
+    show_carriage_box: bool,
+    pub dest_floor: Option<u16>,
+    pub destination_reached: bool,
+    pub current_floor: Option<u16>
 
 }
 
-impl  ElevatorInfra {
+impl  ElevatorVisualInfra {
     pub(crate) fn new(movement_area: Rect) -> Self {
 
         let carriage_playground = movement_area.inner(&Margin{ horizontal: 1, vertical: 1});
@@ -84,48 +113,53 @@ impl  ElevatorInfra {
                 .collect()
                 ;        
 
-        let carriage_shape = Rectangle {
-            x: separator.start_x + 1.0,
-            y: separator.start_y,
-            width: 10.0,
-            height: each_floor_height as f64,
-            color: Color::Yellow,
+        let carriage_box = CarriageBox {
+            bottom_left_x_offset_from_origin:  carriage_playground.width as f64/2.0,
+            bottom_left_y_offset_from_origin:  0.0,
+            width:                             carriage_playground.width as f64/2.0,
+            height:                            each_floor_height as f64
         };
+
+        //info!("carriage box {:?}", carriage_box);
 
         let floors_having_passengers: Vec<bool> = vec![false; MX_FLOORS as usize];
 
-        ElevatorInfra {
-            carriage_shape,
+        ElevatorVisualInfra {
+            carriage_box,
             carriage_playground,
-            marker: Marker::Block,
             tick_count: 0,
             building_wall: separator,
             each_floor_height,
             floor_as_rects: all_floors_represented_as_rects,
-            floors_having_passengers: floors_having_passengers
+            floors_having_passengers: floors_having_passengers,
+            show_carriage_box: false, // TODO: use a flag to indicate if elev is operation (Start/Stop)
+            dest_floor: None,
+            current_floor: None,
+            destination_reached: false
 
         }
     }
 
-    pub fn tranlate_coords_to_viewport(&self,floor_index: usize, origin: (u16,u16)) -> Rectangle {
-        let floor_rect = self.floor_as_rects[floor_index as usize];
-        let passenger_at_floor_indicator = self.floors_having_passengers[floor_index];
-        let left_top_y = origin.1 + (floor_index as u16 * floor_rect.height);
-        Rectangle {
-            x: origin.0 as f64,
-            y: left_top_y as f64,
-            width: floor_rect.width as f64,
-            height: floor_rect.height as f64,
-            color: if passenger_at_floor_indicator { Color::Red } else { Color::LightBlue }
-        }
+    pub fn set_carriage_ready(&mut self) -> () {
+        self.carriage_box.move_to_ground();
+        self.show_carriage_box = true;
+        self.current_floor = Some(0);
+    }
+
+    pub fn unset_carriage(&mut self) -> () {
+        self.show_carriage_box =  false;
+        self.current_floor = None;
+    }
+
+    pub fn should_show_carriage(&self) -> bool {
+        self.show_carriage_box
     }
 
     pub fn get_carriage_displacement_map_per_floor(&self,origin: (u16,u16)) -> Vec<(f64,f64)> {
         self.floor_as_rects.iter().enumerate()
                 .map(|(floor_index,rect)| {
                     let left_bottom_y = origin.1 + (floor_index as u16 * rect.height);
-                    let left_top_y    = left_bottom_y + rect.height;
-                    (left_top_y as f64, left_bottom_y as f64) 
+                    (0.0,left_bottom_y as f64)    // X coordinates for all floors remain unchanged
                 })
                 .collect()  
     }
@@ -141,60 +175,44 @@ impl  ElevatorInfra {
         None
     }
 
-    pub fn on_passenger_summoning(&mut self, at_floor: u16) -> () {
-
+    pub fn serve_passenger_at(&mut self, at_floor: u16) -> () {
         self.floors_having_passengers[at_floor as usize] = true;
     }
 
-    pub fn is_any_passenger_waiting(&self) -> Option<u16> {
-        for (floor_no,is_waiting) in self.floors_having_passengers.iter().enumerate() {
-            if *is_waiting { return Some (floor_no as u16)}
+
+
+    pub fn mark_floor_on_reaching_destination(&mut self, dest_floor: u16) -> () {
+        self.floors_having_passengers[dest_floor as usize] = false;
+    }
+
+    pub fn set_next_destination(&mut self, to_floor: u16) {
+        self.dest_floor = Some(to_floor);
+        let floor_mp = self.get_carriage_displacement_map_per_floor((0,0));
+        //info!("Destination rect {:?}",floor_mp[to_floor as usize]);
+    }
+
+    pub fn on_reaching_destination(&mut self) -> () {
+        self.destination_reached = true;
+        self.current_floor = self.dest_floor;
+        self.dest_floor = None;
+    }
+
+    pub fn on_carriage_moving_to(&mut self,  move_to: (f64,f64)) {
+        self.carriage_box.bottom_left_y_offset_from_origin = move_to.1;
+    }
+
+    pub fn tranlate_coords_to_viewport(&self,floor_index: usize, origin: (u16,u16)) -> Rectangle {
+        let floor_rect = self.floor_as_rects[floor_index as usize];
+        let passenger_at_floor_indicator = self.floors_having_passengers[floor_index];
+        let left_top_y = origin.1 + (floor_index as u16 * floor_rect.height);
+        Rectangle {
+            x: origin.0 as f64,
+            y: left_top_y as f64,
+            width: floor_rect.width as f64,
+            height: floor_rect.height as f64,
+            color: if passenger_at_floor_indicator { Color::Red } else { Color::LightBlue }
         }
-        None
     }
 
-    pub fn tell_me_more(&self) -> String {
-        format!(
-            "Carriage top-left-x({}),top-left-y({}),bot-right-x({}),bot_right-y({})) | Ground top-left-x({}),top-left-y({}),bot-right-x({}),bot_right-y({}))\n",
-            self.carriage_shape.x,
-            self.carriage_shape.y,
-            self.carriage_shape.x+self.carriage_shape.width,
-            self.carriage_shape.y+self.carriage_shape.height,
-            self.carriage_playground.x,
-            self.carriage_playground.y,
-            self.carriage_playground.x + self.carriage_playground.width,
-            self.carriage_playground.y + self.carriage_playground.height
-        )
-    }
 
-    pub fn on_tick(&mut self,  move_by: (i16,i16)) {
-        self.tick_count += 1;
-        
-       
-        /* if self.ball.x < self.playground.left() as f64
-            || self.ball.x + self.ball.width > self.playground.right() as f64
-        {
-            self.dir_x = !self.dir_x;
-        } */
-
-        let new_y_coord = self.carriage_shape.y + move_by.1 as f64;
-
-        if new_y_coord > self.carriage_playground.top() as f64
-            && new_y_coord + self.carriage_shape.height < self.carriage_playground.bottom() as f64
-        {
-            self.carriage_shape.y = new_y_coord // x remains unchanged
-        }
-
-        /* if self.dir_x {
-            self.ball.x += self.vx;
-        } else {
-            self.ball.x -= self.vx;
-        } */
-
-        /* if self.dir_y {
-            self.ball.y += self.vy;
-        } else {
-            self.ball.y -= self.vy
-        } */
-    }
 }

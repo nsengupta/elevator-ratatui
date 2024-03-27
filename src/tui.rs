@@ -1,6 +1,6 @@
 use crate::app::{App, AppResult};
 use crate::async_event::AppOwnEvent;
-use crate::elevator_infra::ElevatorInfra;
+use crate::elevator_infra::ElevatorVisualInfra;
 use crate::tui_layout::{self, TuiLayout};
 use crate::ui::{self, DisplayManager};
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event as CrosstermEvent, KeyEventKind};
@@ -49,7 +49,7 @@ impl<B: Backend> Tui<B> {
             task,
             cancellation_token,
             event_tx,
-            frame_rate: 30.0,
+            frame_rate: 10.0,
             tick_rate: 1.0,
             ui
         }
@@ -65,8 +65,6 @@ impl<B: Backend> Tui<B> {
 
         let sharable_tx = self.event_tx.clone();
         let sharable_cancellation_token = self.cancellation_token.clone();
-
-        
 
         self.task = tokio::spawn(async move {
 
@@ -151,7 +149,7 @@ impl<B: Backend> Tui<B> {
     ///
     /// [`Draw`]: tui::Terminal::draw
     /// [`rendering`]: crate::ui:render
-    pub fn draw(&mut self, inner_infra: &ElevatorInfra) -> AppResult<()> {
+    pub fn draw(&mut self, inner_infra: &ElevatorVisualInfra) -> AppResult<()> {
         self.terminal
             .draw(|frame| self.ui.render_working(inner_infra, &self.layout, frame))?;
         Ok(())

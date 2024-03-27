@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 # tui = "0.16"
 
-ratatui = "0.26.1"
+ratatui = { version = "0.26.1", features = ["unstable-widget-ref"] }
 clearscreen = "2.0.1"
 figlet-rs = "0.1.5"
 tui-input = "0.8.0"
@@ -24,11 +24,14 @@ ractor = { version = "0.9", features = ["cluster"] }
 ractor_cluster = "0.9"
 
 async-trait = "0.1"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive"] } 
 env_logger = "0.11.2"
 log = "0.4"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter", "std"] }
+assertx = "1.1.7"
+rand = "0.8"
+array-init = "2.1.0"
 
 
 

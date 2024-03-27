@@ -1,8 +1,10 @@
 
-use ratatui::{backend::Backend, layout::Alignment, style::{Color, Style, Stylize}, symbols::Marker, text::{Line as TextLine, Span, Text}, widgets::{canvas::{Canvas, Line, Rectangle}, Block,Borders, Paragraph, Wrap}, Frame};
+use colored::Colorize;
+use ratatui::{backend::Backend, layout::Alignment, style::{Color, Modifier, Style, Stylize}, symbols::Marker, text::{Line as TextLine, Span, Text}, widgets::{canvas::{Canvas, Line, Rectangle}, Block,Borders, Paragraph, Wrap}, Frame};
+use tracing::info;
 
-use crate::{elevator_infra::ElevatorInfra, tui_layout::TuiLayout};
-
+use crate::{elevator_infra::ElevatorVisualInfra, tui_layout::TuiLayout};
+/* 
 #[derive(Debug)]
 pub struct CarriageShape {
     pub  bottom_left_x_offset_from_origin: f64,
@@ -26,40 +28,30 @@ impl CarriageShape {
         self.bottom_left_x_offset_from_origin = 0.0;
         self
     }
-}
+} */
 
 #[derive(Debug)]
 pub struct DisplayManager {
 
-    pub display_area_origin_x: f64,
+    pub floors_origin_x: f64,
+    pub floors_origin_y: f64
+
+   /*  pub display_area_origin_x: f64,
     pub display_area_origin_y: f64,
     pub display_area_width   : u16,
     pub display_area_height  : u16,
-    pub carriage             : CarriageShape,
+    pub carriage             : CarriageShape, */
 }
 
 impl DisplayManager {
-    pub fn new(
-            origin: (f64,f64),
-            display_area_width: u16, 
-            display_area_height: u16, 
-            each_floor_height: f64) 
-        -> DisplayManager {
-        let carriage = CarriageShape {
-                    bottom_left_x_offset_from_origin: display_area_width as f64/2.0,
-                    bottom_left_y_offset_from_origin: 0.0,
-                    width: display_area_width as f64,
-                    height: each_floor_height
-        };
-
-        DisplayManager {
-            display_area_origin_x: origin.0,
-            display_area_origin_y: origin.1,
-            display_area_width,
-            display_area_height,
-            carriage:              carriage  
-        }
+    pub fn new() -> DisplayManager { 
+        DisplayManager{
+            floors_origin_x: 0.0
+,           floors_origin_y: 0.0
+        }  // TODO: we don't need a newtype here! 
     }
+    
+     /*
 
     pub fn move_carriage_up(&mut self, displacement: (f64 /* x */, f64 /* y */ )) -> &mut DisplayManager {
         self.carriage.move_up(displacement.1);
@@ -69,7 +61,7 @@ impl DisplayManager {
     pub fn move_carriage_down(&mut self, displacement: (f64 /* x */, f64 /* y */ )) -> &mut DisplayManager {
         self.carriage.move_down(displacement.1);
         self
-    }
+    } */
 
     fn create_state_description_paragraph(heading: &str,left: f64, top: f64, right: f64, bottom: f64) -> Paragraph<'static> {
         let text = Text::from(vec![
@@ -78,7 +70,7 @@ impl DisplayManager {
                 Span::styled("line",Style::new().green().italic()),
                 ".".into(),
             ]),
-            TextLine::from("Second line".red()),
+            TextLine::from("Second line"),
             "Third line".into(),
             heading.to_owned().into(),
             format!("left {}, top {}, width {}, height {}", left,top,right,bottom).into()
@@ -94,7 +86,7 @@ impl DisplayManager {
         paragraph
     }
     
-    fn display_inner_structure_as_paragraph(heading: &str,inner: &ElevatorInfra, carriage: &CarriageShape, rectangles: &Vec<Rectangle>) -> Paragraph<'static> {
+    fn display_inner_structure_as_paragraph(heading: &str,inner: &ElevatorVisualInfra, rectangles: &Vec<Rectangle>) -> Paragraph<'static> {
     
         let main_desc = vec![
             TextLine::from(vec![
@@ -102,7 +94,7 @@ impl DisplayManager {
                 Span::styled("line",Style::new().green().italic()),
                 ".".into(),
             ]),
-            TextLine::from("Second line".red()),
+            TextLine::from("Second line"),
             "Third line".into(),
             heading.to_owned().into(),
             format!("carriage_playground.x {}, carriage_playground.y {}, carriage_playground.width {}, carriage_playground.height {}",inner.carriage_playground.x,inner.carriage_playground.y,inner.carriage_playground.width,inner.carriage_playground.height).into(),
@@ -123,7 +115,7 @@ impl DisplayManager {
             format!("Rectangle {}, x {}, y {}, width {}, height {}", 5, rectangles[5].x,rectangles[5].y,rectangles[5].width,rectangles[5].height).into(),
 
             
-            format!("carriage, bottom_x {}, bottom_y {}", carriage.bottom_left_x_offset_from_origin, carriage.bottom_left_y_offset_from_origin).into()
+            format!("carriage, bottom_x {}, bottom_y {}", inner.carriage_box.bottom_left_x_offset_from_origin, inner.carriage_box.bottom_left_y_offset_from_origin).into()
 
     
         ];
@@ -142,16 +134,92 @@ impl DisplayManager {
     
     
     /// Renders the user interface widgets.
-    pub fn render_working (&mut self,infra: &ElevatorInfra,layout: &TuiLayout, f: &mut Frame) {
+    pub fn render_working (&mut self,infra: &ElevatorVisualInfra,layout: &TuiLayout, f: &mut Frame) {
 
-        let output_chunks = layout.output_windows.clone();
+        let elevator_monitor_layout = layout.input_window[0];
+        let elevator_carriage_layout = layout.output_windows[1];
+        let elevator_start_button = layout.button_windows[0];
+        let elevator_stop_button = layout.button_windows[1];
+        let elevator_current_floor = layout.button_windows[2];
+        let elevator_next_floor = layout.button_windows[3];
 
-        let floors_as_rectangles: Vec<Rectangle> = 
+        let label_currently_at = infra.current_floor.and_then(|v| {
+                if v == 0 { Some("Ground floor".to_owned()) } 
+                else {
+                    let x = format!("Floor {}", v);
+                    Some(format!("Floor {}", v)) 
+                }
+            })
+            .or(Some(format!("Unknwon at the moment")))
+            .unwrap();
+
+        let label_next_stop = infra.dest_floor.and_then(|v| {
+                if v == 0 { Some("Ground floor".to_owned()) } 
+                else {
+                    let x = format!("Floor {}", v);
+                    Some(format!("Floor {}", v)) 
+                }
+            })
+            .or(Some(format!("Unknwon at the moment")))
+            .unwrap();
+
+        f.render_widget(
+            Block::new().borders(Borders::ALL).title("Elevator monitor, press 'q' to quit"),
+                elevator_monitor_layout);
+
+        f.render_widget(
+            Paragraph::new("Press here to start.")
+                .block(
+                    Block::new()
+                            .borders(Borders::ALL)
+                            //.title("Press inside the box to start")
+                            .bg(Color::Green)
+                            .fg(Color::Black)
+                ),
+                elevator_start_button);
+
+        f.render_widget(
+            Paragraph::new("Press here to stop.")
+                .block(
+                    Block::new()
+                    .borders(Borders::ALL)
+                    //.title("Press inside the box to stop")
+                    .bg(Color::Red)
+                    .fg(Color::Black)
+                ),
+                elevator_stop_button);
+
+        f.render_widget(
+            Paragraph::new(label_currently_at)
+                .style(Style::default().add_modifier(Modifier::BOLD))
+                .alignment(Alignment::Center)
+                .block(
+                    Block::new()
+                    .borders(Borders::ALL)
+                    .title("Currently at floor")
+                    .bg(Color::LightBlue)
+                    .fg(Color::Black)
+                ),
+                elevator_current_floor);
+
+        f.render_widget(
+            Paragraph::new(label_next_stop)
+                .style(Style::default().add_modifier(Modifier::BOLD))
+                .alignment(Alignment::Center)
+                .block(Block::new()
+                       .borders(Borders::ALL)
+                       .title("Next stop at floor")
+                       .bg(Color::LightMagenta)
+                       .fg(Color::Black)
+                    ),
+                elevator_next_floor);            
+       
+
+       let output_chunks = layout.output_windows.clone();
+
+       let floors_as_rectangles: Vec<Rectangle> = 
                     DisplayManager::translate_floor_coords_to_viewport_rectangles(infra, (0.0,0.0));
-    
-        let elevator_transitions_window = DisplayManager::display_inner_structure_as_paragraph("Floors",&infra, &self.carriage, &floors_as_rectangles);
-    
-        f.render_widget(elevator_transitions_window, output_chunks[0]);
+
     
         let canvas = Canvas::default()
             .block(
@@ -178,13 +246,15 @@ impl DisplayManager {
                     ctx.draw(each_floor_as_rectangle);
                 }
     
-                ctx.draw(&self.create_rectangle_for_carriage());
-    
-    
+                if infra.should_show_carriage() {
+                    ctx.draw(&self.bring_carriage_to_screen(infra));
+                }
+                    
             })
            
-            .x_bounds([0.0, infra.carriage_playground.width as f64 ])
-            .y_bounds([0.0, infra.carriage_playground.height as f64 ])
+            .x_bounds([self.floors_origin_x, infra.carriage_playground.width as f64 ])
+            .y_bounds([self.floors_origin_y, infra.carriage_playground.height as f64 ])
+            
             ;
 
 
@@ -192,7 +262,7 @@ impl DisplayManager {
     
     }
 
-    pub fn create_rectangle_for_carriage(&self) -> Rectangle {
+   /*  pub fn create_rectangle_for_carriage(&self) -> Rectangle {
         Rectangle {
             x: self.display_area_origin_x + self.carriage.bottom_left_x_offset_from_origin,
             y: self.display_area_origin_y + self.carriage.bottom_left_y_offset_from_origin,
@@ -200,11 +270,21 @@ impl DisplayManager {
             height: self.carriage.height,
             color: Color::LightGreen
         }
+    } */
+
+    pub fn bring_carriage_to_screen(&self, infra: &ElevatorVisualInfra) -> Rectangle {
+        //info!("crriage bo {:?}", infra.carriage_box);
+        Rectangle {
+            x: self.floors_origin_x + infra.carriage_box.bottom_left_x_offset_from_origin,
+            y: self.floors_origin_y + infra.carriage_box.bottom_left_y_offset_from_origin,
+            width: infra.carriage_box.width,
+            height: infra.carriage_box.height,
+            color: Color::LightGreen
+        }
     }
     
     pub fn translate_floor_coords_to_viewport_rectangles(
-                infra: &ElevatorInfra, origin: (f64,f64)) -> 
-            Vec<Rectangle> {
+                infra: &ElevatorVisualInfra, origin: (f64,f64)) -> Vec<Rectangle> {            
     
         let f = infra.floor_as_rects.iter().enumerate()
                 .rev()
@@ -225,7 +305,7 @@ impl DisplayManager {
         f                
     }
     
-    fn display_floor_rectangles_as_paragraph(heading: &str,inner: &ElevatorInfra,floor_rectangles: &Vec<Rectangle>) -> Paragraph<'static> {
+    fn display_floor_rectangles_as_paragraph(heading: &str,inner: &ElevatorVisualInfra,floor_rectangles: &Vec<Rectangle>) -> Paragraph<'static> {
     
         let mut t = Text::default();
     

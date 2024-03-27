@@ -1,35 +1,68 @@
-use std::{error, io::Stdout};
-use crate::{async_event::AppOwnEvent, elevator_infra::ElevatorInfra, tui::Tui, tui_layout::TuiLayout, ui::DisplayManager};
+use std::{error, time::Duration};
+use crate::{async_event::AppOwnEvent, conversation::vocabulary::{ElevatorVocabulary, PulleyVocabulary}, elevator_infra::{ElevatorVisualInfra, MX_FLOORS}, elevator_installation::{self, pulley_machinery::PulleyActor}, tui::Tui, tui_layout::TuiLayout, ui::DisplayManager};
 use crossterm::event::{self, KeyCode, KeyEvent, MouseButton, MouseEvent, MouseEventKind};
+use crate::elevator_installation::elevator_service::PassengerLiftActor;
+use ractor::{Actor, ActorRef};
 use ratatui::{backend::{Backend, CrosstermBackend}, layout::Position, Terminal};
 use crossterm::event::MouseEventKind::Down;
-use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use tokio::{sync::mpsc::{self, UnboundedReceiver, UnboundedSender}, task::JoinHandle};
 use tracing::info;
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 
 pub struct App <B: Backend> {
-    pub inner_infra: ElevatorInfra,
-    to_quit: bool,
-    pub tick_count: i32,
-    pub tick_rate: f64,
-    pub frame_rate: f64,
-    pub last_tick_key_events: Vec<KeyEvent>,
-    pub mouse_at: Vec<MouseEvent>,
-    pub tui_wrapper: Tui<B>,
-    pub event_rx: UnboundedReceiver<AppOwnEvent>,
-    pub event_tx: UnboundedSender<AppOwnEvent>,
-    // pub elevator_control: ElevatorControllerActor
-    // pun eleva 
-
+    pub inner_infra:            ElevatorVisualInfra,
+    to_quit:                    bool,
+    pub tick_count:             i32,
+    pub tick_rate:              f64,
+    pub frame_rate:             f64,
+    pub last_tick_key_events:   Vec<KeyEvent>,
+    pub mouse_at:               Vec<MouseEvent>,
+    pub tui_wrapper:            Tui<B>,
+    pub app_own_event_rx:       UnboundedReceiver<AppOwnEvent>,
+    pub app_own_event_tx:       UnboundedSender<AppOwnEvent>,
+    pub elev_event_tx:          UnboundedSender<ElevatorVocabulary>,
+    pub elev_event_rx:          UnboundedReceiver<ElevatorVocabulary>,
+    passenger_lift:            (ActorRef<ElevatorVocabulary>,JoinHandle<()>),
+    pulley_machinery:          (ActorRef<PulleyVocabulary>,JoinHandle<()>),
+    passengers_alighting:       bool
 }
 
 impl<B: Backend> App <B> {
 
-    pub fn new (carriage_movement_area: ElevatorInfra,tick_rate: f64, frame_rate: f64, terminal: Terminal<B>, tui_layout: TuiLayout, ui: DisplayManager) -> Self { 
-        let (event_tx, event_rx) = mpsc::unbounded_channel();
-      
-        let tui = Tui::new(terminal,tui_layout,ui, event_tx.clone());
+    pub async fn new (
+        carriage_movement_area: ElevatorVisualInfra,
+        tick_rate: f64, 
+        frame_rate: f64, 
+        terminal: Terminal<B>, 
+        tui_layout: TuiLayout, ui: DisplayManager
+    ) -> Self { 
+
+        let (app_own_event_tx, app_own_event_rx) = mpsc::unbounded_channel();
+
+        let tui = Tui::new(terminal,tui_layout,ui, app_own_event_tx.clone());
+
+        let floor_setting = carriage_movement_area
+                .get_carriage_displacement_map_per_floor((0,0));
+
+        let (pulley_ref, pulley_handle) = Actor::spawn(
+            Some(String::from("Pulley_actor")), 
+            PulleyActor, 
+            floor_setting
+        )
+        .await
+        .expect("Failed to create Pulley actor")
+        ;
+
+        let (elev_event_tx, elev_event_rx) = mpsc::unbounded_channel();
+
+        let (elev_ref, elev_handle) = 
+            Actor::spawn(
+                Some(String::from("Elevator-Actor")),
+                PassengerLiftActor,
+                (MX_FLOORS,Some(elev_event_tx.clone()),pulley_ref.clone())
+            ).await
+            .expect("Failed to start actor");
 
         Self {
             inner_infra: carriage_movement_area,
@@ -40,8 +73,14 @@ impl<B: Backend> App <B> {
             last_tick_key_events: Vec::new(),
             mouse_at: Vec::new(),
             tui_wrapper: tui,
-            event_rx,
-            event_tx
+            app_own_event_rx,
+            app_own_event_tx,
+            elev_event_tx,
+            elev_event_rx,
+            passenger_lift: (elev_ref,elev_handle),
+            pulley_machinery: (pulley_ref,pulley_handle),
+            passengers_alighting: false
+
         } 
     }
 
@@ -65,74 +104,97 @@ impl<B: Backend> App <B> {
 
     pub async fn run(&mut self) -> AppResult<()> {
         
-        let floor_locations = self.inner_infra.get_carriage_displacement_map_per_floor((0,0));
-        let current_left_top_y_init = floor_locations[0].0; // Ground floor
-        let mut current_left_top_y = current_left_top_y_init; 
-        
         loop {
             
-            // Treat events from Tui and Elevator, as appropriate.
-            match self.event_rx.recv().await {
+            tokio::select! {
+                from_elevator = self.elev_event_rx.recv() => {
+                    match from_elevator {
+                       Some(ElevatorVocabulary::MoveToGroundFloor) => {
+                        self.inner_infra.set_carriage_ready();
+                       },
+                       Some(ElevatorVocabulary::MovingTo(f)) => {
+                        self.inner_infra.set_next_destination(f as u16);
+                       }
+                       Some(ElevatorVocabulary::CurrentCarriagePosn((x_posn,y_posn))) =>  {
+                        self.inner_infra.on_carriage_moving_to((x_posn,y_posn));
+                       },
+                       Some(ElevatorVocabulary::OpenTheDoor(f)) => {
+                        self.inner_infra.on_reaching_destination();
+                        
+                        // We are simulating the action of opening, waiting and closing the carriage-door.
+                        let app_event_channel_passed = self.app_own_event_tx.clone();
+                        let _ = tokio::spawn (async move {
+                            tokio::time::sleep(Duration::from_secs(2)).await;
+                            app_event_channel_passed.send(AppOwnEvent::AllPassengersAlighted(f)).unwrap();
+                        });
+                        
+                       }
+                       Some(ElevatorVocabulary::ElevatorOutOfService) => {
+                        self.inner_infra.unset_carriage();
+                       },
+                       Some(ElevatorVocabulary::Stop(0)) => {},
+                       Some(_) => {},
+                       None => { todo!(); }
 
-                Some(AppOwnEvent::Init) => info!("app received init!"),
+                }},
+                app_own_event = self.app_own_event_rx.recv() => {
+                    self.handle_app_own_event(app_own_event).unwrap();
+                }
+            };
 
-                Some(AppOwnEvent::Tick) => {
-    
-                    if let Some(floor) = self.inner_infra.is_any_passenger_waiting() {
-                        info!("First log message here");
-                        if current_left_top_y < floor_locations[floor as usize].0 {
-                            current_left_top_y += 1.0;
-                            self.inner_infra.on_tick((0,1));
-                            self.tui_wrapper.ui.move_carriage_up((0.0,1.0));
-                        }
-                    }
-                    else {
-                        info!("Tick received, no passenger waiting");
-                    }
-                   
-                },
-                Some(AppOwnEvent::Render) => {
-                    self.tui_wrapper.draw(&self.inner_infra)?;
-                },
-                Some(AppOwnEvent::Key(key_event)) => {
-                    self.update_app(AppOwnEvent::Key(key_event))
-                    
-                },
-                e@ Some(AppOwnEvent::Mouse(m)) => {
-                    self.update_app(e.unwrap())
-                },
-                None => {},
-                _ => {}
-                
-            }
-    
             if self.should_quit_app() {
                 self.tui_wrapper.exit()?;
                 break Ok(());
             }
                 
         }
+
+        
     }
 
-    pub fn update_app(&mut self, app_event: AppOwnEvent) -> () {
+    fn handle_app_own_event(&mut self, e: Option<AppOwnEvent>) -> AppResult<()> {
 
-        if let AppOwnEvent::Key(key) = app_event {
-            match key.code {
-              KeyCode::Char('q') => { 
-                // TODO: Inform the actors
-                // TODO: Bring Tui back to cooked mode
-                self.quit() },
-                 
-              _ => {},
-            }
-        }
-        else {
-            match app_event {
-                AppOwnEvent::Tick => {
-                    self.tick_count = self.tick_count + 1;
+        match e {
+                Some(AppOwnEvent::Init) => info!("app received init!"),
+
+                Some(AppOwnEvent::Tick) => {},
+
+                Some(AppOwnEvent::AllPassengersAlighted(at_floor)) => {
+                    self.inner_infra.mark_floor_on_reaching_destination(at_floor as u16);
+                    self.passenger_lift.0.send_message(ElevatorVocabulary::DoorClosed(at_floor)).unwrap();
                 },
+
+                Some(AppOwnEvent::Render) => {
+                    self.tui_wrapper.draw(&self.inner_infra)?;
+                },
+                Some(AppOwnEvent::Key(key_event)) => {
+                    self.on_inputs_from_users(AppOwnEvent::Key(key_event))
+                    
+                },
+                e@ Some(AppOwnEvent::Mouse(_)) => {
+                    self.on_inputs_from_users(e.unwrap())
+                },
+                None => {},
+                _ => {}
+                
+            }
+
+        Ok(())    
+    }
+
+    pub fn on_inputs_from_users(&mut self, app_event: AppOwnEvent) -> () {
+            match app_event {
+
+                AppOwnEvent::Key(key) => {
+                    match key.code {
+                        KeyCode::Char('q') => { 
+                          self.quit() },
+                           
+                        _ => {},
+                      }
+                },
+
                 AppOwnEvent::Mouse(m) => {
-                    self.mouse_at.push(m);
                     match m.kind {
                         MouseEventKind::Down(MouseButton::Left) => {
                             if let Some(floor_no) = 
@@ -140,13 +202,25 @@ impl<B: Backend> App <B> {
                                 .is_passenger_waiting_at_reachable_floor(
                                     Position{x: m.column, y: m.row}
                                 ) {
+                                info!("Passenger is waiting at {}!", floor_no);    
+                                self.inner_infra.serve_passenger_at(floor_no);
+                                self.passenger_lift.0.send_message(
+                                    ElevatorVocabulary::MoveToFloor(floor_no as u8) // TODO: do we need u16?
+                                ).unwrap();
+                            }
 
-                                self.inner_infra.on_passenger_summoning(floor_no);
-                                // TODO: Send a ElevatorVocabulary::Moveto message to ControllerActor
-                            };
+                            else
+                            if self.has_operator_pressed_start_button(Position{x: m.column, y: m.row}) {
+                                info!("Elevator is starting!");
+                                self.passenger_lift.0.send_message(ElevatorVocabulary::PowerOn).unwrap();
+                            }
+                            else
+                            if self.has_operator_pressed_button_stop_button(Position{x: m.column, y: m.row}) {
+                                info!("Elevator is stopping!");
+                                self.passenger_lift.0.send_message(ElevatorVocabulary::PowerOff).unwrap();
+                            }
+                            else {}
 
-                            // TODO: Else, if Mouse-click indicates that Elevator should start
-                            // Else, if Mouse-click indicates that Elevator should stop
                         
                         }, 
                         _ => {} // ignore other mouse events
@@ -158,32 +232,16 @@ impl<B: Backend> App <B> {
         }
     }
 
-    pub fn save_to_file(&self) -> () {
-
-        for n in &self.mouse_at {
-
-            match n {
-                MouseEvent { kind: Down(_), column: c, row: r, modifiers: _ } => {
-                    for next_floor in self.inner_infra.floor_as_rects.iter().enumerate() {
-                        let is_in = next_floor.1.contains(Position{x: *c, y: *r });
-                        println!(" Mouse-event kind {:?}, at (Row{} : Column{}), Rect [{}] (left {}, top {}, right {}, bottom {}, contains? {}", 
-                                    n.kind, 
-                                    n.row, 
-                                    n.column,
-                                    next_floor.0,
-                                    next_floor.1.left(),
-                                    next_floor.1.top(),
-                                    next_floor.1.right(),
-                                    next_floor.1.bottom(),
-                                    if is_in { "Yes".to_owned() } else { "No".to_owned() }
-                            );
-                        }
-
-                    },
-                _ => {}
-            }
- 
-        }
-
+    fn is_button_pressed_by_a_passnger(&self, p: Position) -> Option<u16> {
+        self.inner_infra.is_passenger_waiting_at_reachable_floor(p)
     }
+
+    fn has_operator_pressed_start_button(&self, p: Position) -> bool {
+        self.tui_wrapper.layout.button_windows[0].contains(p)
+    }
+
+    fn has_operator_pressed_button_stop_button(&self, p: Position) -> bool {
+        self.tui_wrapper.layout.button_windows[1].contains(p)
+    }
+
  }

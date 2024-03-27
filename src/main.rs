@@ -5,6 +5,7 @@ mod elevator_infra;
 mod tui_layout;
 mod ui;
 mod conversation;
+mod elevator_installation;
 
 
 use std::error::Error;
@@ -13,7 +14,7 @@ use std::path::PathBuf;
 
 
 use app::App;
-use elevator_infra::ElevatorInfra;
+use elevator_infra::ElevatorVisualInfra;
 use log::info;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
@@ -23,10 +24,8 @@ use tracing_subscriber::Layer;
 use tui_layout::TuiLayout;
 use ui::DisplayManager;
 
-use crate::async_event::AppOwnEvent;
 
-
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> Result<(), Box<dyn Error>> {
 
 
@@ -51,17 +50,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
         );
 
 
-     let carriage_parameters = ElevatorInfra::new(
+     let floor_and_carriage_screen_segment = ElevatorVisualInfra::new(
             tui_layout.get_window_corners(1));
 
-    println!("each floor height {}", carriage_parameters.each_floor_height);
+    println!("each floor height {}", floor_and_carriage_screen_segment.each_floor_height);
 
-    let display_manager = DisplayManager::new(
-            (0.0,0.0), /* origin: */
-            carriage_parameters.carriage_playground.width,  /* display_area_width: */   
-            carriage_parameters.carriage_playground.height, /* display_areaa_height: */ 
-            carriage_parameters.each_floor_height as f64    /* each_floor_height: */    
-        );
+    let display_manager = DisplayManager::new();
 
 
     let mut user_input = String::new();
@@ -72,7 +66,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // let mut tui = Tui::new(terminal, tui_layout, display_manager);
      
      // Create an application.
-     let mut app = App::new(carriage_parameters, 1.0, 30.0,terminal,tui_layout,display_manager);
+     let mut  app = App::new(
+                floor_and_carriage_screen_segment, 
+                1.0, 
+                30.0,
+                terminal,
+                tui_layout,
+                display_manager)
+              .await;
 
     app.init()?;
 
