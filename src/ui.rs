@@ -23,7 +23,6 @@ pub struct DisplayManager {
 
 impl DisplayManager {
     pub fn new() -> DisplayManager {
-
         DisplayManager {
             floors_origin_x: 0.0,
             floors_origin_y: 0.0,
@@ -38,86 +37,33 @@ impl DisplayManager {
         layout: &TuiLayout,
         f: &mut Frame,
     ) {
-        let elevator_monitor_layout     = layout.info_window[0];
-        let _elevator_carriage_layout   = layout.motion_window[1];
-        let elevator_start_button       = layout.button_windows[layout.start_button_index as usize];
-        let elevator_stop_button        = layout.button_windows[layout.stop_button_index as usize];
-        let elevator_current_floor      = layout.button_windows[layout.current_floor_index as usize];
-        let elevator_next_floor         = layout.button_windows[layout.next_stop_index as usize];
+        let elevator_monitor_layout = layout.info_window[0];
+        let _elevator_carriage_layout = layout.motion_window[1];
+        let elevator_start_button = layout.button_windows[layout.start_button_index as usize];
+        let elevator_stop_button = layout.button_windows[layout.stop_button_index as usize];
+        let elevator_current_floor = layout.button_windows[layout.current_floor_index as usize];
+        let elevator_next_floor = layout.button_windows[layout.next_stop_index as usize];
 
-        let scroll_by = self.compute_scroll_extent(
-                messages_for_ops, 
-                &elevator_monitor_layout
-            );
+        let scroll_by = self.compute_scroll_extent(messages_for_ops, &elevator_monitor_layout);
 
         let label_currently_at = self.create_label_for_current_floor(infra);
 
         let label_next_stop = self.create_label_for_dest_floor(infra);
 
-        f.render_widget(
-            Paragraph::new(
-                messages_for_ops
-                    .clone()
-                    .drain(0..)
-                    .map(|n| TextLine::from(n))
-                    .collect::<Vec<TextLine>>(),
-            )
-            .block(
-                Block::new()
-                    .borders(Borders::ALL)
-                    .title("Elevator monitor, press 'q' to quit"),
-            )
-            .scroll((scroll_by, 0)),
+        self.render_elevator_monitor_window(
+            messages_for_ops,
             elevator_monitor_layout,
+            scroll_by,
+            f,
         );
 
-        f.render_widget(
-            Paragraph::new("Press here to start.").block(
-                Block::new()
-                    .borders(Borders::ALL)
-                    .bg(Color::Green)
-                    .fg(Color::Black),
-            ),
-            elevator_start_button,
-        );
+        self.render_start_button(elevator_start_button, f);
 
-        f.render_widget(
-            Paragraph::new("Press here to stop.").block(
-                Block::new()
-                    .borders(Borders::ALL)
-                    .bg(Color::Red)
-                    .fg(Color::Black),
-            ),
-            elevator_stop_button,
-        );
+        self.render_stop_button(elevator_stop_button, f);
 
-        f.render_widget(
-            Paragraph::new(label_currently_at)
-                .style(Style::default().add_modifier(Modifier::BOLD))
-                .alignment(Alignment::Center)
-                .block(
-                    Block::new()
-                        .borders(Borders::ALL)
-                        .title("Currently at floor")
-                        .bg(Color::LightBlue)
-                        .fg(Color::Black),
-                ),
-            elevator_current_floor,
-        );
+        self.render_currently_at_kiosk(label_currently_at, elevator_current_floor, f);
 
-        f.render_widget(
-            Paragraph::new(label_next_stop)
-                .style(Style::default().add_modifier(Modifier::BOLD))
-                .alignment(Alignment::Center)
-                .block(
-                    Block::new()
-                        .borders(Borders::ALL)
-                        .title("Next stop at floor")
-                        .bg(Color::LightMagenta)
-                        .fg(Color::Black),
-                ),
-            elevator_next_floor,
-        );
+        self.render_next_stop_kiosk(label_next_stop, elevator_next_floor, f );
 
         let output_chunks = layout.motion_window.clone();
 
@@ -156,7 +102,9 @@ impl DisplayManager {
                 infra.carriage_playground.height as f64,
             ]);
 
-        f.render_widget(canvas, output_chunks[1]);
+        //f.render_widget(canvas, output_chunks[1]);
+        f.render_widget(canvas, _elevator_carriage_layout);
+        
     }
 
     fn create_label_for_current_floor(&self, infra: &ElevatorVisualInfra) -> String {
@@ -239,5 +187,96 @@ impl DisplayManager {
         } else {
             (content_lines - displayable_area_lines) as u16
         }
+    }
+
+    fn render_elevator_monitor_window(
+        &mut self,
+        messages_for_ops: &VecDeque<String>,
+        elevator_monitor_layout: Rect,
+        scroll_by: u16,
+        f: &mut Frame,
+    ) -> () {
+        f.render_widget(
+            Paragraph::new(
+                messages_for_ops
+                    .clone()
+                    .drain(0..)
+                    .map(|n| TextLine::from(n))
+                    .collect::<Vec<TextLine>>(),
+            )
+            .block(
+                Block::new()
+                    .borders(Borders::ALL)
+                    .title("Elevator monitor, press 'q' to quit"),
+            )
+            .scroll((scroll_by, 0)),
+            elevator_monitor_layout,
+        );
+    }
+
+    fn render_start_button(&self, elevator_start_button: Rect, f: &mut Frame) -> () {
+        f.render_widget(
+            Paragraph::new("Press here to start.").block(
+                Block::new()
+                    .borders(Borders::ALL)
+                    .bg(Color::Green)
+                    .fg(Color::Black),
+            ),
+            elevator_start_button,
+        );
+    }
+
+    fn render_stop_button(&self, elevator_stop_button: Rect, f: &mut Frame) -> () {
+        f.render_widget(
+            Paragraph::new("Press here to stop.").block(
+                Block::new()
+                    .borders(Borders::ALL)
+                    .bg(Color::Red)
+                    .fg(Color::Black),
+            ),
+            elevator_stop_button,
+        );
+    }
+
+    fn render_currently_at_kiosk(
+        &self,
+        label_currently_at: String,
+        elevator_current_floor: Rect,
+        f: &mut Frame,
+    ) -> () {
+        f.render_widget(
+            Paragraph::new(label_currently_at)
+                .style(Style::default().add_modifier(Modifier::BOLD))
+                .alignment(Alignment::Center)
+                .block(
+                    Block::new()
+                        .borders(Borders::ALL)
+                        .title("Currently at floor")
+                        .bg(Color::LightBlue)
+                        .fg(Color::Black),
+                ),
+            elevator_current_floor,
+        );
+    }
+
+    fn render_next_stop_kiosk(
+        &self,
+        label_next_stop: String,
+        elevator_next_floor: Rect,
+        f: &mut Frame,
+    ) -> () {
+        f.render_widget(
+            Paragraph::new(label_next_stop)
+                .style(Style::default().add_modifier(Modifier::BOLD))
+                .alignment(Alignment::Center)
+                .block(
+                    Block::new()
+                        .borders(Borders::ALL)
+                        .title("Next stop at floor")
+                        .bg(Color::LightMagenta)
+                        .fg(Color::Black),
+                ),
+            elevator_next_floor,
+        );
     }
 }
