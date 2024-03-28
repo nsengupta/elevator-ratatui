@@ -95,7 +95,7 @@ mod tests {
         let carriage = &mut CarriageData::new(8);
 
         for i in data.iter() {
-            carriage.add_to_destinations(*i);
+            carriage.enqueue_next_destination(*i);
         }
 
         for i in (0..8).into_iter() {
