@@ -1,7 +1,7 @@
 
 
 
-use ratatui::{layout::{Margin, Position}, prelude::{Color, Marker, Rect}, widgets::canvas::Rectangle};
+use ratatui::{layout::{Margin, Position}, prelude::{Color, Rect}, widgets::canvas::Rectangle};
 use tracing::info;
 
 pub const MX_FLOORS: u16 = 8;
@@ -15,12 +15,12 @@ pub struct CarriageBox {
 }
 
 impl CarriageBox {
-    pub fn move_up(&mut self, displacement: f64) -> &mut Self {
+    pub fn _move_up(&mut self, displacement: f64) -> &mut Self {
         self.bottom_left_y_offset_from_origin += displacement;
         self
     }
 
-    pub fn move_down(&mut self, displacement: f64) -> &mut Self {
+    pub fn _move_down(&mut self, displacement: f64) -> &mut Self {
         self.bottom_left_y_offset_from_origin -= displacement;
         self
     }
@@ -43,15 +43,13 @@ pub struct Separator {
 pub struct ElevatorVisualInfra {
     pub carriage_box: CarriageBox,
     pub carriage_playground: Rect,
-    tick_count: i32,
-    pub building_wall: Separator,
     pub each_floor_height: u16,
     pub floor_as_rects: Vec<Rect>,
     pub floors_having_passengers: Vec<bool>,
-    show_carriage_box: bool,
     pub dest_floor: Option<u16>,
-    pub destination_reached: bool,
-    pub current_floor: Option<u16>
+    pub current_floor: Option<u16>,
+    show_carriage_box: bool,
+    destination_reached: bool,
 
 }
 
@@ -60,20 +58,6 @@ impl  ElevatorVisualInfra {
 
         let carriage_playground = movement_area.inner(&Margin{ horizontal: 1, vertical: 1});
 
-        // Separator between the tunnel where the carriage moves and the floors where the passengers wait.
-        let separator_marker_start_x = carriage_playground.left() as f64 + carriage_playground.width  as f64 / 2.0;
-        let separator_marker_start_y = carriage_playground.top() as f64; // carriage_playground.y + carriage_playground.height;
-        let separator_marker_end_x = separator_marker_start_x; // x doesn't change for the wall
-        let separator_marker_end_y = carriage_playground.bottom() as f64; // Top most level on the playground
-
-        // We need a line to display the separator on the screen.
-        let separator = Separator {
-                        start_x: separator_marker_start_x  as f64,  // x1
-                        start_y: separator_marker_start_y as f64, // y1
-                        end_x: separator_marker_end_x  as f64,   // x2
-                        end_y: separator_marker_end_y  as f64,   // y2
-        };
-
         let each_floor_height = 
             f64::floor(
                 (carriage_playground.height as f64) / MX_FLOORS as f64
@@ -81,7 +65,7 @@ impl  ElevatorVisualInfra {
             as u16;
 
         //  Remains fixed across all floors
-        //  Obviously, the bottom_left_x, if defined, will have the same value
+        //  Obviously, the bottom_left_x, will have the same value
         //  Leave a little space from left border
         let each_floor_top_left_x: u16 = carriage_playground.x; 
 
@@ -127,8 +111,6 @@ impl  ElevatorVisualInfra {
         ElevatorVisualInfra {
             carriage_box,
             carriage_playground,
-            tick_count: 0,
-            building_wall: separator,
             each_floor_height,
             floor_as_rects: all_floors_represented_as_rects,
             floors_having_passengers: floors_having_passengers,
@@ -187,8 +169,6 @@ impl  ElevatorVisualInfra {
 
     pub fn set_next_destination(&mut self, to_floor: u16) {
         self.dest_floor = Some(to_floor);
-        let floor_mp = self.get_carriage_displacement_map_per_floor((0,0));
-        //info!("Destination rect {:?}",floor_mp[to_floor as usize]);
     }
 
     pub fn on_reaching_destination(&mut self) -> () {
@@ -199,19 +179,6 @@ impl  ElevatorVisualInfra {
 
     pub fn on_carriage_moving_to(&mut self,  move_to: (f64,f64)) {
         self.carriage_box.bottom_left_y_offset_from_origin = move_to.1;
-    }
-
-    pub fn tranlate_coords_to_viewport(&self,floor_index: usize, origin: (u16,u16)) -> Rectangle {
-        let floor_rect = self.floor_as_rects[floor_index as usize];
-        let passenger_at_floor_indicator = self.floors_having_passengers[floor_index];
-        let left_top_y = origin.1 + (floor_index as u16 * floor_rect.height);
-        Rectangle {
-            x: origin.0 as f64,
-            y: left_top_y as f64,
-            width: floor_rect.width as f64,
-            height: floor_rect.height as f64,
-            color: if passenger_at_floor_indicator { Color::Red } else { Color::LightBlue }
-        }
     }
 
 

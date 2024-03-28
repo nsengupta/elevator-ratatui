@@ -23,12 +23,6 @@ impl CarriageData {
     pub fn where_is(&self) -> u8 {
         self.current_floor
     }
-    pub fn add_to_destinations(&mut self, floor_id: u8) -> &mut CarriageData {
-        self.next_dests_waiting_list.push(
-            if floor_id as u16 > self.mx_floors { self.mx_floors as u8 } else { floor_id }
-        );
-        self
-    }
 
     pub fn already_at_floor(&self, floor_index: u8) -> bool {
         self.current_floor == floor_index

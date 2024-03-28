@@ -6,8 +6,6 @@ use tracing::info;
 
 use crate::conversation::vocabulary::{ElevatorVocabulary, PulleyVocabulary};
 
-// use crate::elevator_service::ElevatorVocabulary::{self, MoveToFloor, Stop};
-
 #[derive(Debug)]
 struct FloorData {
     current: u8,
@@ -19,7 +17,7 @@ impl FloorData {
         self.current < self.destination
     }
 
-    pub fn going_down(&self) -> bool {
+    pub fn _going_down(&self) -> bool {
         self.current > self.destination
     }
 }

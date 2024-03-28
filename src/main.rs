@@ -1,11 +1,11 @@
 mod tui;
-mod async_event;
 mod app;
 mod elevator_infra;
 mod tui_layout;
 mod ui;
 mod conversation;
 mod elevator_installation;
+mod app_own_event;
 
 
 use std::error::Error;
@@ -37,42 +37,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let tui_layout = TuiLayout::new(&terminal)?;
 
-    let screen_0 = tui_layout.get_window_corners(0);
+    tui_layout.log_window_corners(); // For easier debugging.
 
-    println!("Screen section 0 | top-left-x {} / top-left-y {}, bottom-right-x {} / bottom_right-y {}",
-            screen_0.left(),screen_0.top(),screen_0.right(),screen_0.bottom()
-        );
-
-    let screen_1 = tui_layout.get_window_corners(1);
-
-    println!("Screen section 1 | top-left-x {} / top-left-y {}, width {} / height {}",
-                screen_1.left(),screen_1.top(),screen_1.width,screen_1.height
-        );
-
-
-     let floor_and_carriage_screen_segment = ElevatorVisualInfra::new(
-            tui_layout.get_window_corners(1));
-
-    println!("each floor height {}", floor_and_carriage_screen_segment.each_floor_height);
-
-    let display_manager = DisplayManager::new();
-
+    let floor_and_carriage_screen_segment = 
+          ElevatorVisualInfra::new(
+            tui_layout.motion_window[tui_layout.motion_window_index as usize]);
 
     let mut user_input = String::new();
+    println!("\nAll set. Press any key to start.\n");
     let stdin = io::stdin(); // We get `Stdin` here.
-    stdin.read_line(&mut user_input);      
+    stdin.read_line(&mut user_input).unwrap();      
 
-
-    // let mut tui = Tui::new(terminal, tui_layout, display_manager);
-     
-     // Create an application.
+     // Create an application. This is what holds everything together and runs the elevator.
      let mut  app = App::new(
                 floor_and_carriage_screen_segment, 
                 1.0, 
                 30.0,
                 terminal,
                 tui_layout,
-                display_manager)
+                DisplayManager::new())
               .await;
 
     app.init()?;
@@ -81,7 +64,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     app.run().await.unwrap();
 
-    
 
     Ok(())
 }

@@ -1,21 +1,21 @@
-use crate::app::{App, AppResult};
-use crate::async_event::AppOwnEvent;
+use crate::app::AppResult;
+use crate::app_own_event::AppOwnEvent;
 use crate::elevator_infra::ElevatorVisualInfra;
-use crate::tui_layout::{self, TuiLayout};
-use crate::ui::{self, DisplayManager};
+use crate::tui_layout::TuiLayout;
+use crate::ui::DisplayManager;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture, Event as CrosstermEvent, KeyEventKind};
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
 use futures::{FutureExt, StreamExt};
 use ratatui::prelude::Backend;
 use ratatui::Terminal;
+use std::collections::VecDeque;
 use std::io;
 use std::panic;
 use std::time::Duration;
-use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use tokio::{
-    sync::mpsc::{UnboundedReceiver, UnboundedSender},
+    sync::mpsc::UnboundedSender,
     task::JoinHandle,
 };
 
@@ -29,7 +29,6 @@ pub struct Tui<CrosstermBackend: ratatui::backend::Backend> {
 
     pub task: JoinHandle<()>,
     pub cancellation_token: CancellationToken,
-    // pub event_rx: UnboundedReceiver<AppOwnEvent>,
     pub event_tx: UnboundedSender<AppOwnEvent>,
     pub frame_rate: f64,
     pub tick_rate: f64,
@@ -40,7 +39,7 @@ pub struct Tui<CrosstermBackend: ratatui::backend::Backend> {
 impl<B: Backend> Tui<B> {
 
     pub fn new(terminal: Terminal<B>, tui_layout: TuiLayout, ui: DisplayManager, event_tx:UnboundedSender<AppOwnEvent>) -> Self {
-        // let (event_tx, event_rx) = mpsc::unbounded_channel();
+
         let cancellation_token = CancellationToken::new();
         let task = tokio::spawn(async {});
         Self {
@@ -71,9 +70,6 @@ impl<B: Backend> Tui<B> {
             let mut event_reader = crossterm::event::EventStream::new();
             let mut tick_interval = tokio::time::interval(tick_delay);
             let mut frame_interval = tokio::time::interval(frame_delay);
-
-            // let new_tick_rate = std::time::Duration::from_millis(250);
-            // let mut new_interval = tokio::time::interval(tick_rate);
 
             sharable_tx.send(AppOwnEvent::Init).unwrap();
 
@@ -149,10 +145,21 @@ impl<B: Backend> Tui<B> {
     ///
     /// [`Draw`]: tui::Terminal::draw
     /// [`rendering`]: crate::ui:render
-    pub fn draw(&mut self, inner_infra: &ElevatorVisualInfra) -> AppResult<()> {
-        self.terminal
-            .draw(|frame| self.ui.render_working(inner_infra, &self.layout, frame))?;
-        Ok(())
+    pub fn draw(
+            &mut self, 
+            inner_infra: &ElevatorVisualInfra, 
+            messages_for_opes: &VecDeque<String>
+        ) -> AppResult<()> {
+            self.terminal
+                .draw(|frame| self.ui
+                    .render_working(
+                        inner_infra,
+                        messages_for_opes,
+                         &self.layout, 
+                         frame
+                        )
+                    )?;
+            Ok(())
     }
 
     /// Resets the terminal interface.
@@ -182,10 +189,6 @@ impl<B: Backend> Tui<B> {
         self.terminal.show_cursor()?;
         Ok(())
     }
-
-   /*  pub async fn next(&mut self) -> Option<AppOwnEvent> {
-        self.event_rx.recv().await
-    } */
 
     pub fn cancel(&self) {
         self.cancellation_token.cancel();

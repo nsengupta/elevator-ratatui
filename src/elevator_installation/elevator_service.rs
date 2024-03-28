@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::info;
-use crate::elevator_installation::carriage_internal::CarriageData;
+use crate::elevator_installation::carriage_machinery::CarriageData;
 use crate::conversation::vocabulary::{ElevatorVocabulary, PulleyVocabulary};
 use crate::conversation::vocabulary::ElevatorVocabulary::*;
 use crate::elevator_installation::elevator_operations::{ElevatorController, ElevatorFSMInputs, ElevatorFSMOutputs, ElevatorFSMStates, ElevatorStateMachine, NextDestTodo};
