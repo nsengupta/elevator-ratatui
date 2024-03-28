@@ -117,7 +117,7 @@ impl DisplayManager {
                     Some(format!("Floor {}", v))
                 }
             })
-            .or(Some(format!("Unknwon at the moment")))
+            .or(Some(format!("Unknown at the moment")))
             .unwrap();
 
         label_currently_at
@@ -133,7 +133,7 @@ impl DisplayManager {
                     Some(format!("Floor {}", v))
                 }
             })
-            .or(Some(format!("Unknwon at the moment")))
+            .or(Some(format!("Unknown at the moment")))
             .unwrap();
 
         label_next_stop

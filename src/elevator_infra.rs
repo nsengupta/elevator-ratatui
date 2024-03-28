@@ -125,7 +125,6 @@ impl  ElevatorVisualInfra {
     pub fn set_carriage_ready(&mut self) -> () {
         self.carriage_box.move_to_ground();
         self.show_carriage_box = true;
-        self.current_floor = Some(0);
     }
 
     pub fn unset_carriage(&mut self) -> () {
