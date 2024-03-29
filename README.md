@@ -64,8 +64,8 @@ A passenger on any floor may press the button, while
 *   The carriage is moving
 *   The carriage has just reached a floor and passengers are still alighting
 
-Moreover, the operator can decide to stop the elevator, when
-*   S/he has sensed an emergency and pressed the **stop** button
+Moreover, the operator can decide to stop the elevator **anytime**, if and when
+*   S/he has sensed an emergency and pressed the **stop** button (the elevator may be moving or be stationery when this happens)
 
 When the operator 'stop's the elevator (the Red button at the bottom), tHe procedure adopted is to allow the carriage to complete the journey to a floor, if it is already moving. However, after this floor's passengers have safely alighted, the carriage moves back to ground floor, as a measure of safety ( hey, this is my elevator and I decide how it behaves :smile: ). I assume that the machinery has enough backup power to complete this locomotion.
 
