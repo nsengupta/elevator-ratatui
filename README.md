@@ -67,7 +67,7 @@ A passenger on any floor may press the button, while
 Moreover, the operator can decide to stop the elevator **anytime**, if and when
 *   S/he has sensed an emergency and pressed the **stop** button (the elevator may be moving or be stationery when this happens)
 
-When the operator 'stop's the elevator (the Red button at the bottom), tHe procedure adopted is to allow the carriage to complete the journey to a floor, if it is already moving. However, after this floor's passengers have safely alighted, the carriage moves back to ground floor, as a measure of safety ( hey, this is my elevator and I decide how it behaves :smile: ). I assume that the machinery has enough backup power to complete this locomotion.
+When the operator 'stop's the elevator (the Red button at the bottom), the procedure adopted is to allow the carriage to complete the journey to a floor, if it is already moving. However, after this floor's passengers have safely alighted, the carriage moves back to ground floor, as a measure of safety ( hey, this is my elevator and I decide how it behaves :smile: ). I assume that the machinery has enough backup power to complete this locomotion.
 
 
 The application handles these events, **deterministically** using a __FSM__ in association with an __Actor__. The mouse-clicks at the ui (task of #ratatui) are passed on as events to the Elevator actor. The outcome of FSM's transitions to the next state, is then translated to corresponding visual changes on the screen.
@@ -78,9 +78,9 @@ Two major improvements, I would like bring about:
 *   Convert the ui-functionality into an Actor itself, so that all communications between components happen by messages between the Actors.
 *   Simulate the effect of opening and closing the elevator's door, by some 'fill' kind of effect. This requires a specialized widget, unless good folks at #ratatui come up with one such, easing the life for me!  😁
   
-I also plan to write separate blogs and/or READMEs, to elaborate how the application is structured and why.  
+I also plan to write separate blogs and/or READMEs, to elaborate how the application is structured and why; hopefully, in soon enough. 
   
 
 ### Acknowledgment
 
-Along with many Rust experts whose books, blogs and tutorials are helping me to get a grip on #rustlang, I must make a special mention of the team at ractor (https://github.com/slawlor/ractor), Eugene Babichenko (https://github.com/eugene-babichenko), and **of course**, the fantastic team of #ratatui ().
+Along with many Rust experts whose books, blogs and tutorials are helping me to get a grip on #rustlang, I must make a special mention of the team at ractor (https://github.com/slawlor/ractor), Eugene Babichenko (https://github.com/eugene-babichenko), and **of course**, the fantastic team of #ratatui.
