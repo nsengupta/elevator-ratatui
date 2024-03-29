@@ -81,6 +81,6 @@ Two major improvements, I would like bring about:
 I also plan to write separate blogs and/or READMEs, to elaborate how the application is structured and why; hopefully, in soon enough. 
   
 
-### Acknowledgment
+### Acknowledgement
 
 Along with many Rust experts whose books, blogs and tutorials are helping me to get a grip on #rustlang, I must make a special mention of the team at ractor (https://github.com/slawlor/ractor), Eugene Babichenko (https://github.com/eugene-babichenko), and **of course**, the fantastic team of #ratatui.
