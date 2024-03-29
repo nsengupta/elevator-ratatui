@@ -78,7 +78,7 @@ Two major improvements, I would like bring about:
 *   Convert the ui-functionality into an Actor itself, so that all communications between components happen by messages between the Actors.
 *   Simulate the effect of opening and closing the elevator's door, by some 'fill' kind of effect. This requires a specialized widget, unless good folks at #ratatui come up with one such, easing the life for me!  😁
   
-I also plan to write separate blogs and/or READMEs, to elaborate how the application is structured and why; hopefully, in soon enough. 
+I also plan to write separate blogs and/or READMEs, to elaborate how the application is structured and why; hopefully, soon enough. 
   
 
 ### Acknowledgement
