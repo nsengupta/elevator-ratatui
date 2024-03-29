@@ -63,7 +63,12 @@ A passenger on any floor may press the button, while
 *   The carriage is standing at some other floor
 *   The carriage is moving
 *   The carriage has just reached a floor and passengers are still alighting
-*   The operator has sensed an emergency and pressed the stop button
+
+Moreover, the operator can decide to stop the elevator, when
+*   S/he has sensed an emergency and pressed the **stop** button
+
+When the operator 'stop's the elevator (the Red button at the bottom), tHe procedure adopted is to allow the carriage to complete the journey to a floor, if it is already moving. However, after this floor's passengers have safely alighted, the carriage moves back to ground floor, as a measure of safety ( hey, this is my elevator and I decide how it behaves :smile: ). I assume that the machinery has enough backup power to complete this locomotion.
+
 
 The application handles these events, **deterministically** using a __FSM__ in association with an __Actor__. The mouse-clicks at the ui (task of #ratatui) are passed on as events to the Elevator actor. The outcome of FSM's transitions to the next state, is then translated to corresponding visual changes on the screen.
 
