@@ -1,7 +1,7 @@
 
 ### An elevator, on-screen
 
-This is a fun project, and primarily the result of my journey with Rust ( #rustlang ) in general and a few other design approach and tools in particular, namely:
+This is a fun project, and primarily the result of my journey with Rust ( #rustlang ) in general and a few other design approaches and tools in particular, namely:
 
 *   ratatui (https://ratatui.rs/)
 *   ractor  (https://github.com/slawlor/ractor)
@@ -16,7 +16,7 @@ The objective is to simulate an working elevator, but on a usual text-based term
 
 The application has four main components:
 
-* The user-facing, terminal-based component: through this an operator start and stops the elevator, and the passengers indicate the floors that they want the elevator to move to. The visible floors and simulated carriage are also implemented in this component.
+* The user-facing, terminal-based component: through this an operator starts and stops the elevator, and the passengers indicate the floors that they want the elevator to move to. The visible floors and simulated mobile carriage are also implemented in this component.
 * The elevator and its pulley: these are modeled and implemented as __actors__ . Being actors, they specify their own vocabularies, a set of events that they publish, recognize and respond to.
 * The finite-state-machine: the movement of the elevator is governed by this FSM. The states and transitions are pre-defined. Events reaching the elevator are submitted to this FSM and the resultant transitions, ensure that the behaviour of the elevator (and the pulley, as needed) are always **deterministic**  and therefore, verifiable.
 * The application, called the 'App', which holds these components together, oversees their life-cycle and facilitates communication between them.
@@ -42,13 +42,13 @@ On its first appearance, the application looks like this:
 
 ![At the start](first-screen.png)
 
-At this point in time, the floors are seen at the right-most block ( with title 'Floors+Carriage' ) but no carriage is seen. By pressing on the green box at the bottom row ( with prompt 'Press here to start' ), you can bring the carriage in operation.
+At this point in time, the floors are seen at the right-most block ( with title 'Floors+Carriage' ) but no carriage is seen. By pressing on the green box at the bottom row ( with prompt 'Press here to start' ), the operator can bring the carriage in operation.
 
 ![carriage is seen](second-screen.png)
 
 The carriage can be seen at the right most corner, a green box, just beside the floors.
 
-Clicking on any floor, will force the carriage to move to that floor, wait for a moment (simulating the action of opening the door, letting the passengers alight and embarking, and then closing the door).
+Clicking on any floor, will force the carriage to move to that floor, to wait for a moment (simulating the action of opening the door, letting the passengers alight and embarking), and then to close the door.
 
 The elevator service is stopped, at any point in time, by pressing the red box at the bottom row.
 
